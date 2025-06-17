@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2, Clock, History, Utensils } from 'lucide-react';
+import { Trash2, Clock } from 'lucide-react';
 import { MealEntry } from '@/types';
 import { deleteMeal } from '@/lib/storage';
 
@@ -27,21 +27,12 @@ export default function MealList({ meals, onMealDeleted }: MealListProps) {
 
   if (meals.length === 0) {
     return (
-      <div className="card micro-bounce">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
-            <History className="w-6 h-6 text-macro-carbs" />
-            Dagens Måltider
-          </h2>
-        </div>
-        
-        <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 bg-dark-700/30 rounded-full flex items-center justify-center backdrop-blur-sm">
-            <Utensils className="w-8 h-8 text-slate-400" />
-          </div>
-          <p className="text-slate-300 text-lg font-medium mb-2">Inga måltider registrerade ännu</p>
-          <p className="text-slate-400">
-            Använd AI-assistenten ovan för att logga din första måltid
+      <div className="card">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Dagens Måltider</h2>
+        <div className="text-center py-8">
+          <p className="text-gray-600">Inga måltider registrerade ännu</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Använd formuläret ovan för att logga din första måltid
           </p>
         </div>
       </div>
@@ -49,110 +40,72 @@ export default function MealList({ meals, onMealDeleted }: MealListProps) {
   }
 
   return (
-    <div className="card micro-bounce">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
-          <History className="w-6 h-6 text-macro-carbs" />
-          Dagens Måltider ({meals.length})
-        </h2>
-        <div className="swipe-hint">
-          ← → Swipe för historik
-        </div>
-      </div>
+    <div className="card">
+      <h2 className="text-xl font-bold text-gray-900 mb-4">
+        Dagens Måltider ({meals.length})
+      </h2>
       
-      <div className="space-y-4 custom-scrollbar max-h-96 overflow-y-auto">
-        {meals.map((meal, index) => (
+      <div className="space-y-3">
+        {meals.map((meal) => (
           <div 
             key={meal.id}
-            className="relative bg-dark-700/20 backdrop-blur-sm border border-dark-600/30 rounded-soft p-6 hover:bg-dark-700/30 hover:border-dark-500/50 transition-all duration-300 micro-bounce reveal"
-            style={{ animationDelay: `${index * 0.1}s` }}
+            className="border border-gray-200 rounded-lg p-4 bg-gray-50"
           >
-            {/* Glass overlay */}
-            <div className="glass-overlay" />
-            
-            <div className="flex items-start justify-between relative z-10">
-              <div className="flex-1 space-y-4">
-                {/* Time and meal info */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 px-3 py-1 bg-dark-600/40 rounded-pill backdrop-blur-sm">
-                    <Clock className="w-4 h-4 text-macro-protein" />
-                    <span className="text-sm text-slate-300 font-medium">
-                      {formatTime(meal.timestamp)}
-                    </span>
-                  </div>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    {formatTime(meal.timestamp)}
+                  </span>
                 </div>
                 
-                {/* Meal description */}
-                <p className="text-slate-100 font-medium text-lg leading-relaxed">
+                <p className="text-gray-900 font-medium mb-3">
                   {meal.originalText}
                 </p>
                 
-                {/* Bento-style macro display */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bento-card bento-protein p-4 min-h-[80px]">
-                    <div className="glass-overlay" />
-                    <div className="relative z-10 text-center">
-                      <div className="text-lg font-black text-macro-protein count-up">
-                        {meal.macros.protein}g
-                      </div>
-                      <div className="text-slate-300 text-xs font-medium mt-1">Protein</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                  <div className="text-center p-2 bg-blue-100 rounded">
+                    <div className="font-semibold text-blue-800">
+                      {meal.macros.protein}g
                     </div>
+                    <div className="text-blue-600 text-xs">Protein</div>
                   </div>
                   
-                  <div className="bento-card bento-carbs p-4 min-h-[80px]">
-                    <div className="glass-overlay" />
-                    <div className="relative z-10 text-center">
-                      <div className="text-lg font-black text-macro-carbs count-up">
-                        {meal.macros.carbs}g
-                      </div>
-                      <div className="text-slate-300 text-xs font-medium mt-1">Kolhydrater</div>
+                  <div className="text-center p-2 bg-green-100 rounded">
+                    <div className="font-semibold text-green-800">
+                      {meal.macros.carbs}g
                     </div>
+                    <div className="text-green-600 text-xs">Kolhydrater</div>
                   </div>
                   
-                  <div className="bento-card bento-fat p-4 min-h-[80px]">
-                    <div className="glass-overlay" />
-                    <div className="relative z-10 text-center">
-                      <div className="text-lg font-black text-macro-fat count-up">
-                        {meal.macros.fat}g
-                      </div>
-                      <div className="text-slate-300 text-xs font-medium mt-1">Fett</div>
+                  <div className="text-center p-2 bg-purple-100 rounded">
+                    <div className="font-semibold text-purple-800">
+                      {meal.macros.fat}g
                     </div>
+                    <div className="text-purple-600 text-xs">Fett</div>
                   </div>
                   
-                  <div className="bento-card bento-calories p-4 min-h-[80px]">
-                    <div className="glass-overlay" />
-                    <div className="relative z-10 text-center">
-                      <div className="text-lg font-black text-macro-calories count-up">
-                        {meal.macros.calories}
-                      </div>
-                      <div className="text-slate-300 text-xs font-medium mt-1">kcal</div>
+                  <div className="text-center p-2 bg-orange-100 rounded">
+                    <div className="font-semibold text-orange-800">
+                      {meal.macros.calories}
                     </div>
+                    <div className="text-orange-600 text-xs">kcal</div>
                   </div>
                 </div>
               </div>
               
-              {/* Delete button with better accessibility */}
               <button
                 onClick={() => handleDeleteMeal(meal.id)}
-                className="ml-4 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-full transition-all duration-200 micro-bounce micro-glow border border-red-500/20 hover:border-red-500/40 backdrop-blur-sm min-w-[48px] min-h-[48px] flex items-center justify-center"
+                className="ml-3 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                 title="Ta bort måltid"
-                aria-label="Ta bort måltid"
               >
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
         ))}
       </div>
-      
-      {/* Summary footer */}
-      {meals.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-dark-600/30">
-          <p className="text-center text-slate-400 text-sm">
-            Totalt {meals.length} måltid{meals.length !== 1 ? 'er' : ''} registrerade idag
-          </p>
-        </div>
-      )}
     </div>
   );
 } 

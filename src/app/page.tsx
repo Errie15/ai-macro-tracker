@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sparkles, TrendingUp, Zap, Moon, Sun } from 'lucide-react';
 import MacroProgress from '@/components/MacroProgress';
 import MealInput from '@/components/MealInput';
 import GoalsSettings from '@/components/GoalsSettings';
@@ -24,7 +23,6 @@ export default function HomePage() {
     fat: 0,
     calories: 0,
   });
-  const [isLightMode, setIsLightMode] = useState(false);
 
   // Ladda data från localStorage
   useEffect(() => {
@@ -67,137 +65,51 @@ export default function HomePage() {
     setGoals(newGoals);
   };
 
-  const toggleTheme = () => {
-    setIsLightMode(!isLightMode);
-    document.documentElement.classList.toggle('light');
-    document.body.classList.toggle('light');
-  };
-
   return (
-    <div className="min-h-screen p-4 pb-20 custom-scrollbar">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header with Exaggerated Minimalism */}
-        <div className="text-center space-y-6 pt-8 pb-4 thumb-reach">
-          <div className="flex items-center justify-center space-x-4">
-            <h1 className="text-5xl md:text-6xl font-black text-slate-100 tracking-tight">
-              AI Makro
-            </h1>
-            <div className="animate-pulse">
-              <Sparkles className="w-12 h-12 text-macro-protein" />
-            </div>
-          </div>
-          <p className="text-xl md:text-2xl text-slate-300 font-medium max-w-2xl mx-auto leading-relaxed">
-            Din personliga wellness-coach
-            <br />
-            <span className="text-macro-carbs font-semibold">alltid i fickan</span>
+    <div className="min-h-screen p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            🤖 AI Makro Tracker
+          </h1>
+          <p className="text-gray-700">
+            Spåra dina makron enkelt med AI-driven näringsanalys
           </p>
-          
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className="btn-secondary micro-bounce micro-glow"
-            aria-label="Växla tema"
-          >
-            {isLightMode ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
-          </button>
         </div>
 
-        {/* Large Central Input Zone - Hero Section */}
-        <div className="thumb-reach reveal">
-          <MealInput onMealAdded={handleMealAdded} />
-        </div>
-
-        {/* Bento-style Layout for Macronutrients */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 reveal">
-          <MacroProgress 
-            totalMacros={totalMacros}
-            goals={goals}
+        {/* Goals Settings Button */}
+        <div className="mb-6 flex justify-center">
+          <GoalsSettings 
+            currentGoals={goals}
+            onGoalsUpdated={handleGoalsUpdated}
           />
         </div>
 
-        {/* Settings and Stats Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 reveal">
-          {/* Goals Settings Card */}
-          <div className="lg:col-span-1">
-            <div className="card micro-bounce">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
-                  <TrendingUp className="w-6 h-6 text-macro-protein" />
-                  Mål
-                </h2>
-              </div>
-              <GoalsSettings 
-                currentGoals={goals}
-                onGoalsUpdated={handleGoalsUpdated}
-              />
-            </div>
+        {/* Main Content Grid */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-6">
+            <MacroProgress 
+              totalMacros={totalMacros}
+              goals={goals}
+            />
           </div>
 
-          {/* Today's Summary Card */}
-          <div className="lg:col-span-2">
-            <div className="card micro-bounce">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
-                  <Zap className="w-6 h-6 text-macro-carbs" />
-                  Dagens Sammanfattning
-                </h2>
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-dark-700/30 rounded-soft backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-macro-protein count-up">
-                    {Math.round((totalMacros.protein / goals.protein) * 100)}%
-                  </div>
-                  <div className="text-sm text-slate-400 mt-1">Protein</div>
-                </div>
-                
-                <div className="text-center p-4 bg-dark-700/30 rounded-soft backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-macro-carbs count-up">
-                    {Math.round((totalMacros.carbs / goals.carbs) * 100)}%
-                  </div>
-                  <div className="text-sm text-slate-400 mt-1">Kolhydrater</div>
-                </div>
-                
-                <div className="text-center p-4 bg-dark-700/30 rounded-soft backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-macro-fat count-up">
-                    {Math.round((totalMacros.fat / goals.fat) * 100)}%
-                  </div>
-                  <div className="text-sm text-slate-400 mt-1">Fett</div>
-                </div>
-                
-                <div className="text-center p-4 bg-dark-700/30 rounded-soft backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-macro-calories count-up">
-                    {Math.round((totalMacros.calories / goals.calories) * 100)}%
-                  </div>
-                  <div className="text-sm text-slate-400 mt-1">Kalorier</div>
-                </div>
-              </div>
-            </div>
+          {/* Right Column */}
+          <div className="space-y-6">
+            <MealInput onMealAdded={handleMealAdded} />
+            
+            <MealList 
+              meals={todaysMeals}
+              onMealDeleted={handleMealDeleted}
+            />
           </div>
         </div>
 
-        {/* Meal History with Glassmorphism */}
-        <div className="reveal">
-          <MealList 
-            meals={todaysMeals}
-            onMealDeleted={handleMealDeleted}
-          />
-        </div>
-
-        {/* Gesture Hints */}
-        <div className="fixed bottom-4 right-4 text-slate-400 text-sm space-y-1 swipe-hint">
-          <div>↕ Swipe för att scrolla</div>
-          <div>← → Swipe för historik</div>
-        </div>
-
-        {/* Footer with Human Touch */}
-        <div className="text-center pt-8 pb-4 thumb-reach">
-          <p className="text-slate-400 font-medium">
-            Byggd med kärlek för din hälsa 💚
-          </p>
-          <p className="text-slate-500 text-sm mt-2">
-            AI-driven näring • Personlig coaching • Alltid tillgänglig
-          </p>
+        {/* Footer */}
+        <div className="mt-12 text-center text-sm text-gray-500">
+          <p>AI Makro Tracker - Enkel makrospårning med artificiell intelligens</p>
         </div>
       </div>
     </div>

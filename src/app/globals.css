@@ -2,248 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import a distinctive font for 2025 aesthetics */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
 :root {
-  /* Light mode colors */
-  --foreground-rgb: 15, 23, 42;
-  --background-start-rgb: 248, 250, 252;
-  --background-end-rgb: 241, 245, 249;
-  
-  /* Dark mode colors (default) */
-  --foreground-dark-rgb: 248, 250, 252;
-  --background-dark-start-rgb: 2, 6, 23;
-  --background-dark-end-rgb: 15, 23, 42;
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
 }
 
 body {
-  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 400;
-  font-style: normal;
-  font-variation-settings: "slnt" 0;
-  
-  /* Dark mode default */
-  color: rgb(var(--foreground-dark-rgb));
-  background: linear-gradient(
-      135deg,
-      rgb(var(--background-dark-start-rgb)) 0%,
-      rgb(var(--background-dark-end-rgb)) 100%
-    );
-  min-height: 100vh;
-  
-  /* Gesture-friendly touch settings */
-  touch-action: manipulation;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Light mode override */
-body.light {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
-      135deg,
-      rgb(var(--background-start-rgb)) 0%,
-      rgb(var(--background-end-rgb)) 100%
-    );
-}
-
-/* Enable text selection for inputs and text areas */
-input, textarea, [contenteditable] {
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  user-select: text;
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 }
 
 @layer components {
-  /* 2025 Modern Input Field */
   .input-field {
-    @apply w-full px-6 py-4 border-2 border-dark-700 bg-dark-800/50 backdrop-blur-md rounded-soft focus:border-macro-protein focus:outline-none text-slate-200 placeholder-slate-400 transition-all duration-300 hover:bg-dark-800/70 focus:bg-dark-800/80 text-lg font-medium;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary-500 focus:outline-none bg-white text-gray-900 placeholder-gray-500;
   }
   
-  .input-field.light {
-    @apply border-slate-200 bg-white/70 backdrop-blur-md text-slate-900 placeholder-slate-500 hover:bg-white/80 focus:bg-white/90;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
-  }
-  
-  /* 2025 Pill-shaped Primary Button */
   .btn-primary {
-    @apply bg-gradient-to-r from-macro-protein to-indigo-600 hover:from-indigo-600 hover:to-macro-protein text-white font-bold py-5 px-8 rounded-pill transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-macro-protein/30 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl text-lg min-h-[60px] touch-manipulation;
-    min-width: 120px;
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   }
   
-  /* 2025 Pill-shaped Secondary Button */
   .btn-secondary {
-    @apply bg-dark-700/50 backdrop-blur-md hover:bg-dark-600/70 text-slate-200 font-bold py-5 px-8 rounded-pill transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-dark-500/30 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl text-lg min-h-[60px] touch-manipulation;
-    min-width: 120px;
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
   }
   
-  .btn-secondary.light {
-    @apply bg-white/70 backdrop-blur-md hover:bg-white/90 text-slate-900 focus:ring-slate-300/30;
-  }
-  
-  /* 2025 Glassmorphism Card */
   .card {
-    @apply bg-dark-800/30 backdrop-blur-xl border border-dark-700/50 rounded-soft p-8 shadow-glass-dark transition-all duration-300 hover:bg-dark-800/40 hover:border-dark-600/50 hover:shadow-glass-dark/80;
+    @apply bg-white rounded-xl shadow-md border border-gray-200 p-6;
   }
   
-  .card.light {
-    @apply bg-white/20 backdrop-blur-xl border-white/30 shadow-glass hover:bg-white/30 hover:border-white/40;
-  }
-  
-  /* 2025 Bento-style Macro Card */
-  .bento-card {
-    @apply bg-gradient-to-br rounded-soft p-6 shadow-bento-dark transition-all duration-300 hover:scale-105 transform cursor-pointer border border-white/10 backdrop-blur-sm min-h-[120px] flex flex-col justify-between;
-  }
-  
-  .bento-card.light {
-    @apply shadow-bento border-black/10;
-  }
-  
-  /* Macro-specific gradients */
-  .bento-protein {
-    @apply from-macro-protein/20 to-indigo-600/20 hover:from-macro-protein/30 hover:to-indigo-600/30;
-  }
-  
-  .bento-carbs {
-    @apply from-macro-carbs/20 to-green-600/20 hover:from-macro-carbs/30 hover:to-green-600/30;
-  }
-  
-  .bento-fat {
-    @apply from-macro-fat/20 to-yellow-600/20 hover:from-macro-fat/30 hover:to-yellow-600/30;
-  }
-  
-  .bento-calories {
-    @apply from-macro-calories/20 to-red-600/20 hover:from-macro-calories/30 hover:to-red-600/30;
-  }
-  
-  /* 2025 Progress Bar */
   .progress-bar {
-    @apply bg-dark-700/30 rounded-pill h-4 overflow-hidden backdrop-blur-sm;
-  }
-  
-  .progress-bar.light {
-    @apply bg-slate-200/50;
+    @apply bg-gray-200 rounded-full h-3 overflow-hidden;
   }
   
   .progress-fill {
-    @apply h-full rounded-pill transition-all duration-700 ease-out;
-  }
-  
-  /* Large Central Input Zone */
-  .central-input {
-    @apply relative min-h-[200px] bg-dark-800/20 backdrop-blur-xl border-2 border-dashed border-dark-600/50 rounded-4xl p-8 transition-all duration-300 hover:border-macro-protein/50 hover:bg-dark-800/30 cursor-pointer;
-  }
-  
-  .central-input.light {
-    @apply bg-white/10 border-slate-300/50 hover:border-macro-protein/50 hover:bg-white/20;
-  }
-  
-  /* Chat Bubble Style */
-  .chat-bubble {
-    @apply bg-dark-700/70 backdrop-blur-md rounded-soft p-4 relative shadow-lg before:content-[''] before:absolute before:bottom-0 before:left-6 before:w-0 before:h-0 before:border-l-[12px] before:border-l-transparent before:border-r-[12px] before:border-r-transparent before:border-t-[12px] before:border-t-dark-700/70 before:transform before:translate-y-full;
-  }
-  
-  .chat-bubble.light {
-    @apply bg-white/80 before:border-t-white/80;
-  }
-  
-  /* AI Thinking Animation */
-  .ai-thinking {
-    @apply flex items-center justify-center space-x-2 p-4 bg-dark-800/30 backdrop-blur-xl rounded-soft;
-  }
-  
-  .ai-thinking.light {
-    @apply bg-white/30;
-  }
-  
-  .thinking-dot {
-    @apply w-3 h-3 bg-macro-protein rounded-full animate-pulse;
-  }
-  
-  .thinking-dot:nth-child(1) { animation-delay: 0s; }
-  .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-  .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-  
-  /* Gesture Hints */
-  .swipe-hint {
-    @apply absolute top-4 right-4 text-slate-400 text-sm font-medium opacity-60 transition-opacity duration-300 hover:opacity-100;
-  }
-  
-  /* Accessibility - One-hand thumb reach */
-  .thumb-reach {
-    @apply max-w-sm mx-auto;
-  }
-  
-  /* High contrast text */
-  .text-high-contrast {
-    @apply text-slate-100 dark:text-slate-900;
-  }
-  
-  .text-high-contrast.light {
-    @apply text-slate-900;
-  }
-  
-  /* Micro-interactions */
-  .micro-bounce {
-    @apply transition-transform duration-200 hover:scale-105 active:scale-95;
-  }
-  
-  .micro-glow {
-    @apply transition-shadow duration-300;
-  }
-  
-  .micro-glow:hover {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3), 0 0 40px rgba(99, 102, 241, 0.1);
-  }
-  
-  /* Count-up animation */
-  .count-up {
-    @apply inline-block animate-count-up;
-  }
-  
-  /* Smooth reveal animation */
-  .reveal {
-    @apply animate-slide-up;
-  }
-  
-  /* Modern scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-dark-800/30 rounded-full;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-macro-protein/50 rounded-full hover:bg-macro-protein/70;
-  }
-  
-  /* Glass overlay for result cards */
-  .glass-overlay {
-    @apply absolute inset-0 bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-sm rounded-soft pointer-events-none;
-  }
-  
-  .glass-overlay.light {
-    @apply from-black/5 to-black/10;
+    @apply h-full rounded-full transition-all duration-300;
   }
 } 
