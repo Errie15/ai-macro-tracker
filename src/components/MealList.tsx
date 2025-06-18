@@ -18,10 +18,15 @@ function formatTime(timestamp: string): string {
 }
 
 export default function MealList({ meals, onMealDeleted }: MealListProps) {
-  const handleDeleteMeal = (mealId: string) => {
-    if (confirm('Are you sure you want to delete this meal?')) {
-      deleteMeal(mealId);
-      onMealDeleted();
+  const handleDeleteMeal = async (mealId: string) => {
+    if (confirm('Är du säker på att du vill ta bort denna måltid?')) {
+      try {
+        await deleteMeal(mealId);
+        onMealDeleted();
+      } catch (error) {
+        console.error('Error deleting meal:', error);
+        alert('Fel vid borttagning av måltid. Försök igen.');
+      }
     }
   };
 
@@ -32,9 +37,9 @@ export default function MealList({ meals, onMealDeleted }: MealListProps) {
           <Utensils className="w-8 h-8 text-tertiary" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-primary mb-2">No meals yet</h3>
+          <h3 className="text-lg font-semibold text-primary mb-2">Inga måltider än</h3>
           <p className="text-tertiary text-sm">
-            Add your first meal to start tracking your macros
+            Lägg till din första måltid för att börja spåra dina makron
           </p>
         </div>
       </div>
@@ -46,7 +51,7 @@ export default function MealList({ meals, onMealDeleted }: MealListProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-primary">
-          Meals ({meals.length})
+          Måltider ({meals.length})
         </h3>
       </div>
       
@@ -69,7 +74,7 @@ export default function MealList({ meals, onMealDeleted }: MealListProps) {
               <button
                 onClick={() => handleDeleteMeal(meal.id)}
                 className="text-tertiary hover:text-red-400 transition-colors tap-effect p-1"
-                title="Delete meal"
+                title="Ta bort måltid"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

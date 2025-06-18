@@ -11,8 +11,11 @@ import BottomNavigation from '@/components/BottomNavigation';
 import MealsPage from '@/components/MealsPage';
 import CalendarPage from '@/components/CalendarPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  
   const [goals, setGoals] = useState<MacroGoals>({
     calories: 2000,
     protein: 150,
@@ -31,19 +34,59 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [currentPage, setCurrentPage] = useState<'home' | 'meals' | 'calendar'>('home');
 
-  // Load data on component mount
+  // Load data on component mount - basic data only
   useEffect(() => {
-    const savedGoals = getMacroGoals();
-    setGoals(savedGoals);
-    
-    loadTodaysMeals();
-    
-    // Load theme preference
-    const savedTheme = localStorage.getItem('isDarkMode');
-    if (savedTheme !== null) {
-      setIsDarkMode(JSON.parse(savedTheme));
+    async function loadData() {
+      try {
+        console.log('🔄 Page loaded, starting to load data...');
+        
+        // Load goals and theme immediately (don't need auth)
+        const savedGoals = await getMacroGoals();
+        setGoals(savedGoals);
+        console.log('✅ Goals loaded');
+        
+        // Load theme preference
+        const savedTheme = localStorage.getItem('isDarkMode');
+        if (savedTheme !== null) {
+          setIsDarkMode(JSON.parse(savedTheme));
+        }
+        
+        console.log('✅ Basic data loaded successfully');
+      } catch (error) {
+        console.error('❌ Error loading basic data:', error);
+      }
     }
+
+    loadData();
   }, []);
+
+  // Load meals when auth is ready
+  useEffect(() => {
+    async function loadMealsWhenReady() {
+      if (!loading) {
+        console.log('🔐 Auth is ready! User:', user?.uid || 'No user');
+        console.log('🔄 Loading today\'s meals...');
+        
+        // Load meals directly here instead of calling loadTodaysMeals
+        try {
+          const today = getTodayDateString();
+          console.log('📅 Loading meals for date:', today);
+          const meals = await getMealsByDate(today);
+          console.log('📋 Found meals:', meals.length, meals);
+          setTodaysMeals(meals);
+          console.log('✅ Meals set in state');
+        } catch (error) {
+          console.error('❌ Error loading today\'s meals:', error);
+        }
+        
+        console.log('✅ Today\'s meals loading complete');
+      } else {
+        console.log('⏳ Still waiting for auth to load...');
+      }
+    }
+
+    loadMealsWhenReady();
+  }, [loading, user]);
 
   // Calculate total macros when meals change
   useEffect(() => {
@@ -65,24 +108,39 @@ export default function Home() {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
 
-  const loadTodaysMeals = () => {
-    const today = getTodayDateString();
-    const meals = getMealsByDate(today);
-    setTodaysMeals(meals);
+  const loadTodaysMeals = async () => {
+    try {
+      const today = getTodayDateString();
+      console.log('📅 Loading meals for date:', today);
+      const meals = await getMealsByDate(today);
+      console.log('📋 Found meals:', meals.length, meals);
+      setTodaysMeals(meals);
+      console.log('✅ Meals set in state');
+    } catch (error) {
+      console.error('❌ Error loading today\'s meals:', error);
+    }
   };
 
-  const handleGoalsUpdated = (newGoals: MacroGoals) => {
-    setGoals(newGoals);
-    setMacroGoals(newGoals);
+  const handleGoalsUpdated = async (newGoals: MacroGoals) => {
+    try {
+      setGoals(newGoals);
+      await setMacroGoals(newGoals);
+    } catch (error) {
+      console.error('Error updating goals:', error);
+    }
   };
 
-  const handleMealAdded = () => {
-    loadTodaysMeals();
+  const handleMealAdded = async () => {
+    await loadTodaysMeals();
     setShowMealInput(false);
   };
 
-  const handleMealDeleted = () => {
-    loadTodaysMeals();
+  const handleMealDeleted = async () => {
+    try {
+      await loadTodaysMeals();
+    } catch (error) {
+      console.error('Error reloading meals after deletion:', error);
+    }
   };
 
   const toggleTheme = () => {

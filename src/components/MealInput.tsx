@@ -7,7 +7,7 @@ import { addMeal } from '@/lib/storage';
 import { MealEntry } from '@/types';
 
 interface MealInputProps {
-  onMealAdded: () => void;
+  onMealAdded: () => void | Promise<void>;
   onCancel?: () => void;
 }
 
@@ -27,23 +27,31 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     setIsAnalyzing(true);
     
     try {
+      console.log('Starting AI analysis...');
       const macros = await analyzeMeal(mealText.trim());
+      console.log('AI analysis complete, received macros:', macros);
       
       const newMeal: MealEntry = {
-        id: Date.now().toString(),
+        id: '', // Will be set by Firebase when saved
         timestamp: new Date().toISOString(),
         date: new Date().toISOString().split('T')[0],
         originalText: mealText.trim(),
         macros,
       };
 
-      addMeal(newMeal);
+      console.log('Saving meal to database...');
+      await addMeal(newMeal);
+      console.log('Meal saved successfully');
+      
       setMealText('');
-      onMealAdded();
+      console.log('Calling onMealAdded...');
+      await Promise.resolve(onMealAdded());
+      console.log('onMealAdded completed');
     } catch (error) {
       console.error('Error adding meal:', error);
       alert('Error analyzing meal. Please try again.');
     } finally {
+      console.log('Setting isAnalyzing to false');
       setIsAnalyzing(false);
     }
   };

@@ -108,7 +108,10 @@ export async function POST(request: NextRequest) {
 
     console.log('Returning macros:', macros);
 
-    return NextResponse.json(macros);
+    const jsonResponse = NextResponse.json(macros);
+    console.log('JSON response created successfully');
+    
+    return jsonResponse;
 
   } catch (error) {
     console.error('Error during AI analysis:', error);
