@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -9,14 +9,6 @@ export const metadata: Metadata = {
   title: '🤖 AI Macro Tracker',
   description: 'Din personliga AI-assistent för hälsosam näring',
   manifest: '/manifest.json',
-  themeColor: '#22c55e',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover'
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -24,10 +16,19 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' }
+      { url: '/icon-emoji.svg', type: 'image/svg+xml' }
     ],
-    apple: '/icon.svg'
+    apple: '/icon-emoji.svg'
   }
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#22c55e'
 }
 
 export default function RootLayout({
@@ -42,7 +43,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="AI Macro Tracker" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
+        <meta name="theme-color" content="#22c55e" />
+        <link rel="apple-touch-icon" href="/icon-emoji.svg" />
+        <link rel="icon" href="/icon-emoji.svg" type="image/svg+xml" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

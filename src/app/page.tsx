@@ -11,6 +11,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 import MealsPage from '@/components/MealsPage';
 import CalendarPage from '@/components/CalendarPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import InstallPrompt from '@/components/InstallPrompt';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
@@ -192,6 +193,7 @@ export default function Home() {
             onAddMeal={openMealInput}
             mealsCount={todaysMeals.length}
           />
+          <InstallPrompt />
         </div>
       </ProtectedRoute>
     );
@@ -217,6 +219,7 @@ export default function Home() {
             onAddMeal={openMealInput}
             mealsCount={todaysMeals.length}
           />
+          <InstallPrompt />
         </div>
       </ProtectedRoute>
     );
@@ -260,6 +263,8 @@ export default function Home() {
           onAddMeal={openMealInput}
           mealsCount={todaysMeals.length}
         />
+
+        <InstallPrompt />
 
         {/* Meal Input Modal */}
         {showMealInput && (
