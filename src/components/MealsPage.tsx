@@ -104,7 +104,7 @@ export default function MealsPage({ meals, onMealDeleted, onBack, onAddMeal }: M
               <div>
                 <h4 className="font-semibold text-primary mb-1">Tips</h4>
                 <p className="text-sm text-secondary">
-                  Använd röstinmatning för att snabbt logga måltider. Säg bara "två ägg och en skiva bröd" så analyserar AI:n resten!
+                  Använd röstinmatning för att snabbt logga måltider. Säg bara &quot;två ägg och en skiva bröd&quot; så analyserar AI:n resten!
                 </p>
               </div>
             </div>
