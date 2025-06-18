@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '🤖 Hälsocoach',
-  description: 'Din personliga AI-assistent för hälsosam kost',
+  title: '🤖 AI Macro Tracker',
+  description: 'Your personal AI assistant for healthy nutrition',
 }
 
 export default function RootLayout({
@@ -15,9 +16,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="sv" className="dark">
+    <html lang="en" className="dark">
       <body className={inter.className}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )

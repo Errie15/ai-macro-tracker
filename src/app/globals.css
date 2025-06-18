@@ -7,11 +7,11 @@
   --background-start-rgb: 17, 24, 39;
   --background-end-rgb: 31, 41, 55;
   
-  /* Dark theme colors */
+  /* Dark theme colors - Enhanced contrast for WCAG AA compliance */
   --text-primary: rgb(255, 255, 255);
-  --text-secondary: rgba(255, 255, 255, 0.8);
-  --text-tertiary: rgba(255, 255, 255, 0.6);
-  --text-quaternary: rgba(255, 255, 255, 0.4);
+  --text-secondary: rgba(255, 255, 255, 0.87); /* Increased from 0.8 for better contrast */
+  --text-tertiary: rgba(255, 255, 255, 0.70); /* Increased from 0.6 for better contrast */
+  --text-quaternary: rgba(255, 255, 255, 0.54); /* Increased from 0.4 for better contrast */
 }
 
 html {
@@ -39,11 +39,11 @@ html:not(.dark) body {
   --background-start-rgb: 240, 238, 236;
   --background-end-rgb: 240, 238, 236;
   
-  /* Light theme colors */
-  --text-primary: rgb(15, 23, 42);
-  --text-secondary: rgb(51, 65, 85);
-  --text-tertiary: rgb(100, 116, 139);
-  --text-quaternary: rgb(148, 163, 184);
+  /* Light theme colors - Enhanced contrast for WCAG AA compliance */
+  --text-primary: rgb(15, 23, 42);        /* Very dark slate for maximum contrast */
+  --text-secondary: rgb(30, 41, 59);      /* Dark slate for good contrast */
+  --text-tertiary: rgb(51, 65, 85);       /* Slate for readable contrast */
+  --text-quaternary: rgb(71, 85, 105);    /* Lighter slate but still readable */
 }
 
 @layer components {
@@ -60,9 +60,26 @@ html:not(.dark) body {
   }
 
   html:not(.dark) .glass-card {
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(71, 85, 105, 0.2);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+  }
+
+  .glass-card-compact {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1.5rem;
+    padding: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    color: var(--text-primary);
+  }
+
+  html:not(.dark) .glass-card-compact {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(71, 85, 105, 0.2);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
   }
   
   .glass-card-strong {
@@ -77,9 +94,9 @@ html:not(.dark) body {
   }
 
   html:not(.dark) .glass-card-strong {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(100, 116, 139, 0.4);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(51, 65, 85, 0.3);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
   }
 
   /* Pill-shaped buttons */
@@ -215,6 +232,44 @@ html:not(.dark) body {
     background: white;
   }
 
+  /* Small input fields for forms */
+  .input-field-small {
+    width: 100%;
+    padding: 0.75rem;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.75rem;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease;
+    outline: none;
+  }
+
+  .input-field-small::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .input-field-small:focus {
+    border-color: #60a5fa;
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  html:not(.dark) .input-field-small {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(71, 85, 105, 0.4);
+    color: var(--text-primary);
+  }
+
+  html:not(.dark) .input-field-small:focus {
+    border-color: #3b82f6;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
   /* Bento-style macro blocks */
   .macro-block {
     backdrop-filter: blur(16px);
@@ -238,12 +293,15 @@ html:not(.dark) body {
   }
 
   html:not(.dark) .macro-block {
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(71, 85, 105, 0.2);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   html:not(.dark) .macro-block:hover {
-    background: rgba(255, 255, 255, 0.95);
+    background: white;
+    border: 1px solid rgba(51, 65, 85, 0.3);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
   }
 
   /* Progress bars */
@@ -257,7 +315,67 @@ html:not(.dark) body {
   }
 
   html:not(.dark) .progress-container {
-    background: rgba(148, 163, 184, 0.4);
+    background: rgba(71, 85, 105, 0.3);
+    border: 1px solid rgba(71, 85, 105, 0.2);
+  }
+
+  /* Macro card blocks for meal entries */
+  .macro-card {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  .macro-card-protein {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: rgb(147, 197, 253);
+  }
+
+  .macro-card-carbs {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: rgb(134, 239, 172);
+  }
+
+  .macro-card-fat {
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: rgb(196, 181, 253);
+  }
+
+  .macro-card-calories {
+    background: rgba(249, 115, 22, 0.2);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    color: rgb(253, 186, 116);
+  }
+
+  /* Light theme macro cards */
+  html:not(.dark) .macro-card-protein {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: rgb(29, 78, 216);
+  }
+
+  html:not(.dark) .macro-card-carbs {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: rgb(22, 101, 52);
+  }
+
+  html:not(.dark) .macro-card-fat {
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: rgb(107, 33, 168);
+  }
+
+  html:not(.dark) .macro-card-calories {
+    background: rgba(249, 115, 22, 0.15);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    color: rgb(154, 52, 18);
   }
   
   .progress-fill-glass {
@@ -349,6 +467,30 @@ html:not(.dark) body {
 @keyframes pulse-gentle {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out;
 }
 
 /* Text color utilities using CSS custom properties */

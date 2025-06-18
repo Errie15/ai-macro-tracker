@@ -32,11 +32,11 @@ export default function CalendarPage({ onBack, onAddMeal }: CalendarPageProps) {
   }
   
   const monthNames = [
-    'januari', 'februari', 'mars', 'april', 'maj', 'juni',
-    'juli', 'augusti', 'september', 'oktober', 'november', 'december'
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ];
   
-  const dayNames = ['Sön', 'Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör'];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
   const navigateMonth = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -72,18 +72,14 @@ export default function CalendarPage({ onBack, onAddMeal }: CalendarPageProps) {
             <button
               onClick={onBack}
               className="btn-pill-secondary w-12 h-12 p-0 tap-effect hover-lift"
-              aria-label="Tillbaka"
+              aria-label="Back"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             
             <div className="flex-1">
-              <h1 className="text-display">Kalender</h1>
-              <p className="text-tertiary">Se din kosthistorik</p>
-            </div>
-            
-            <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center">
-              <CalendarIcon className="w-6 h-6 text-primary" />
+              <h1 className="text-display">Calendar</h1>
+              <p className="text-tertiary">View your meal history</p>
             </div>
           </div>
 
@@ -169,45 +165,25 @@ export default function CalendarPage({ onBack, onAddMeal }: CalendarPageProps) {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 bg-blue-500 rounded-lg"></div>
-                <span className="text-secondary">Idag</span>
+                <span className="text-secondary">Today</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 bg-green-500/20 border border-green-400/30 rounded-lg relative">
                   <div className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full"></div>
                 </div>
-                <span className="text-secondary">Dag med måltider</span>
+                <span className="text-secondary">Day with meals</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 border border-white/20 rounded-lg"></div>
-                <span className="text-secondary">Dag utan måltider</span>
+                <span className="text-secondary">Day without meals</span>
               </div>
             </div>
-          </div>
-
-          {/* Coming Soon */}
-          <div className="glass-card text-center py-8 animate-slide-up" style={{ animationDelay: '400ms' }}>
-            <div className="w-16 h-16 mx-auto bg-purple-500/20 rounded-full flex items-center justify-center mb-4">
-              <CalendarIcon className="w-8 h-8 text-purple-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-primary mb-2">Kommer snart!</h3>
-            <p className="text-tertiary text-sm">
-              Klicka på dagar med måltider för att se vad du åt. Funktionen utvecklas just nu.
-            </p>
           </div>
 
         </div>
       </div>
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-30">
-        <button
-          onClick={onAddMeal}
-          className="btn-pill-primary w-16 h-16 p-0 shadow-2xl hover-lift tap-effect"
-          aria-label="Snabblägg till måltid"
-        >
-          <Plus className="w-8 h-8" />
-        </button>
-      </div>
+
     </div>
   );
 } 

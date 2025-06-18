@@ -3,40 +3,40 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
 
-// System prompt som definierar AI:ns beteende och expertis
+// System prompt that defines AI behavior and expertise
 const SYSTEM_PROMPT = `
-Du är en expert inom näringsanalys och svenska livsmedel. Din uppgift är att analysera måltidsbeskrivningar och ge exakta uppskattningar av makronutrienter.
+You are an expert in nutritional analysis and food composition. Your task is to analyze meal descriptions and provide accurate estimates of macronutrients.
 
-EXPERTIS:
-- Du har djup kunskap om svenska livsmedel och deras näringsinnehåll
-- Du förstår vanliga portionsstorlekar och mätenheter
-- Du kan hantera både exakta mått (gram, ml) och ungefärliga beskrivningar
-- Du tar hänsyn till tillagningssätt som påverkar näringsinnehåll
+EXPERTISE:
+- You have deep knowledge of foods and their nutritional content
+- You understand common portion sizes and measurement units
+- You can handle both exact measurements (grams, ml) and approximate descriptions
+- You account for cooking methods that affect nutritional content
 
-REGLER:
-1. Använd alltid svenska livsmedelsdata som referens
-2. Vid osäkerhet, välj den mest sannolika portionsstorleken för en genomsnittlig vuxen
-3. Räkna med vanliga portioner: 1 banan ≈ 120g, 1 ägg ≈ 50g, 1 skiva bröd ≈ 30g
-4. Inkludera näringsämnen från alla ingredienser, inklusive matlagningsfett
-5. Avrunda till hela gram/kalorier
-6. Svara ENDAST med JSON-format, inga andra tecken
+RULES:
+1. Use comprehensive food database as reference
+2. When uncertain, choose the most likely portion size for an average adult
+3. Use common portions: 1 banana ≈ 120g, 1 egg ≈ 50g, 1 slice bread ≈ 30g
+4. Include nutrients from all ingredients, including cooking fats
+5. Round to whole grams/calories
+6. Respond ONLY in JSON format, no other characters
 
-PORTIONSSTORLEKAR (som referens):
-- Proteinpulver: 1 skopa = 30g
-- Fisk/kött: 1 portion = 100-150g
-- Ris/pasta: 1 portion torrvara = 80-100g
-- Bröd: 1 skiva = 30g
-- Frukt: 1 medelstor = 120-150g
-- Grönsaker: 1 portion = 80-100g
+PORTION SIZES (as reference):
+- Protein powder: 1 scoop = 30g
+- Fish/meat: 1 portion = 100-150g
+- Rice/pasta: 1 portion dry = 80-100g
+- Bread: 1 slice = 30g
+- Fruit: 1 medium = 120-150g
+- Vegetables: 1 portion = 80-100g
 `;
 
 export async function POST(request: NextRequest) {
   try {
-    // Kontrollera API-nyckel
+    // Check API key
     if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-      console.error('API-nyckel saknas');
+      console.error('API key missing');
       return NextResponse.json(
-        { error: 'API-nyckel saknas' },
+        { error: 'API key missing' },
         { status: 500 }
       );
     }
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (!mealDescription || typeof mealDescription !== 'string') {
       return NextResponse.json(
-        { error: 'Måltidsbeskrivning saknas' },
+        { error: 'Meal description missing' },
         { status: 400 }
       );
     }
@@ -55,31 +55,31 @@ export async function POST(request: NextRequest) {
     const prompt = `
     ${SYSTEM_PROMPT}
     
-    Analysera följande måltidsbeskrivning och ge en exakt uppskattning av näringsinnehållet.
+    Analyze the following meal description and provide an accurate estimate of the nutritional content.
     
-    Måltid: "${mealDescription}"
+    Meal: "${mealDescription}"
     
-    Svara med ENDAST ett JSON-objekt i följande format (inga andra tecken):
+    Respond with ONLY a JSON object in the following format (no other characters):
     {
-      "protein": [gram protein],
-      "carbs": [gram kolhydrater], 
-      "fat": [gram fett],
-      "calories": [totala kalorier]
+      "protein": [grams of protein],
+      "carbs": [grams of carbohydrates], 
+      "fat": [grams of fat],
+      "calories": [total calories]
     }
     
-    Exempel på korrekt format:
+    Example of correct format:
     {"protein": 25, "carbs": 45, "fat": 12, "calories": 380}
     `;
 
-    console.log('Skickar prompt till AI...');
+    console.log('Sending prompt to AI...');
     
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
     
-    console.log('AI-svar:', text);
+    console.log('AI response:', text);
 
-    // Rensa och parsa JSON-svaret
+    // Clean and parse JSON response
     const cleanedText = text.trim().replace(/```json|```/g, '').trim();
     
     let parsedData;
@@ -87,18 +87,18 @@ export async function POST(request: NextRequest) {
       parsedData = JSON.parse(cleanedText);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      console.error('Försökte parsa:', cleanedText);
+      console.error('Attempted to parse:', cleanedText);
       
-      // Försök extrahera JSON från text med regex som fallback
+      // Try to extract JSON from text with regex as fallback
       const jsonMatch = cleanedText.match(/\{[^}]*\}/);
       if (jsonMatch) {
         parsedData = JSON.parse(jsonMatch[0]);
       } else {
-        throw new Error('Kunde inte parsa AI-svar som JSON');
+        throw new Error('Could not parse AI response as JSON');
       }
     }
 
-    // Validera och sanera data
+    // Validate and sanitize data
     const macros = {
       protein: Math.max(0, Math.round(parsedData.protein || 0)),
       carbs: Math.max(0, Math.round(parsedData.carbs || 0)),
@@ -106,26 +106,26 @@ export async function POST(request: NextRequest) {
       calories: Math.max(0, Math.round(parsedData.calories || 0)),
     };
 
-    console.log('Returnerar macros:', macros);
+    console.log('Returning macros:', macros);
 
     return NextResponse.json(macros);
 
   } catch (error) {
-    console.error('Fel vid AI-analys:', error);
+    console.error('Error during AI analysis:', error);
     
     if (error instanceof Error) {
-      console.error('Felmeddelande:', error.message);
+      console.error('Error message:', error.message);
       
       if (error.message.includes('API_KEY') || error.message.includes('403')) {
         return NextResponse.json(
-          { error: 'API-nyckel problem' },
+          { error: 'API key problem' },
           { status: 403 }
         );
       }
     }
 
     return NextResponse.json(
-      { error: 'Intern serverfel' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

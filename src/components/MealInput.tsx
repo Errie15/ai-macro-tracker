@@ -41,8 +41,8 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       setMealText('');
       onMealAdded();
     } catch (error) {
-      console.error('Fel vid tillägg av måltid:', error);
-      alert('Fel vid analys av måltid. Försök igen.');
+      console.error('Error adding meal:', error);
+      alert('Error analyzing meal. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -150,7 +150,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              placeholder="Beskriv din måltid här... t.ex. '50g proteinpulver, en banan och 10g jordnötssmör'"
+              placeholder="Describe your meal here... e.g. '50g protein powder, one banana and 10g peanut butter'"
               className="input-field-large"
               disabled={isAnalyzing}
               rows={4}
@@ -194,7 +194,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
                 className="btn-pill-secondary flex-1 tap-effect"
                 disabled={isAnalyzing}
               >
-                Avbryt
+                Cancel
               </button>
             )}
             
@@ -216,7 +216,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               ) : (
                 <>
                   <Plus className="w-6 h-6" />
-                  <span className="font-bold">Lägg Till Måltid</span>
+                  <span className="font-bold">Add Meal</span>
                   <MessageCircle className="w-5 h-5 opacity-70" />
                 </>
               )}
@@ -234,29 +234,14 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-30" />
             </div>
             <div>
-              <p className="font-bold text-lg">Lyssnar...</p>
-              <p className="text-sm opacity-80">Tala nu för att beskriva din måltid</p>
+                              <p className="font-bold text-lg">Listening...</p>
+              <p className="text-sm opacity-80">Speak now to describe your meal</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Gesture Hints */}
-      <div className="glass-card bg-white/5 border-white/10">
-        <div className="text-center space-y-2">
-          <h4 className="text-sm font-semibold text-white/80">Gester</h4>
-          <div className="flex justify-center gap-6 text-xs text-white/60">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-white/40 rounded-full" />
-              <span>Svep ned: Rensa</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-white/40 rounded-full" />
-              <span>Svep höger/vänster: Historik</span>
-            </div>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
-} 
+}

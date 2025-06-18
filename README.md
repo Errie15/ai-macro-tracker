@@ -87,6 +87,8 @@ Makronutrienter visas i färgkodade glassmorphism-block:
 
 ## 🤖 AI-funktioner
 
+Se promt till AI api/analyze-meal/route.ts 
+
 - Exakt näringsanalys baserat på svenska livsmedel
 - Intelligent portionsgissning
 - Felhantering med användarvänliga meddelanden

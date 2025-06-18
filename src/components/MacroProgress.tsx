@@ -96,7 +96,7 @@ function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: Mac
               </span>
               {isOverGoal && (
                 <span className="text-xs text-warning-300 font-medium">
-                  +{Math.round(current - goal)}{unit} över
+                  +{Math.round(current - goal)}{unit} over
                 </span>
               )}
             </div>
@@ -119,7 +119,7 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
       icon: <Activity className="w-full h-full" />
     },
     {
-      label: 'Kolhydrater',
+      label: 'Carbs',
       current: totalMacros.carbs,
       goal: goals.carbs,
       unit: 'g',
@@ -128,7 +128,7 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
       icon: <Zap className="w-full h-full" />
     },
     {
-      label: 'Fett',
+      label: 'Fat',
       current: totalMacros.fat,
       goal: goals.fat,
       unit: 'g',
@@ -137,7 +137,7 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
       icon: <Droplets className="w-full h-full" />
     },
     {
-      label: 'Kalorier',
+      label: 'Calories',
       current: totalMacros.calories,
       goal: goals.calories,
       unit: ' kcal',
@@ -149,14 +149,6 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
 
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Section Header */}
-      <div className="text-center space-y-2">
-        <h2 className="text-display">Dagens Progress</h2>
-        <p className="text-tertiary text-lg">
-          Din näringsuppföljning just nu
-        </p>
-      </div>
-      
       {/* Bento Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {macroBlocks.map((block, index) => (
@@ -174,7 +166,7 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
       <div className="glass-card text-center space-y-3 animate-slide-up" style={{ animationDelay: '400ms' }}>
         <div className="flex items-center justify-center gap-2">
           <Target className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-primary">Daglig Sammanfattning</h3>
+          <h3 className="text-lg font-semibold text-primary">Daily Summary</h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div className="space-y-1">
@@ -184,19 +176,19 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
             </div>
           </div>
           <div className="space-y-1">
-            <div className="text-tertiary">Kolhydrater</div>
+            <div className="text-tertiary">Carbs</div>
             <div className="font-bold text-green-400">
               {Math.round((totalMacros.carbs / goals.carbs) * 100)}%
             </div>
           </div>
           <div className="space-y-1">
-            <div className="text-tertiary">Fett</div>
+            <div className="text-tertiary">Fat</div>
             <div className="font-bold text-purple-400">
               {Math.round((totalMacros.fat / goals.fat) * 100)}%
             </div>
           </div>
           <div className="space-y-1">
-            <div className="text-tertiary">Kalorier</div>
+            <div className="text-tertiary">Calories</div>
             <div className="font-bold text-orange-400">
               {Math.round((totalMacros.calories / goals.calories) * 100)}%
             </div>
