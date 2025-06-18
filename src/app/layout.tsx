@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AI Makro Tracker',
-  description: 'Spåra dina makron enkelt med AI-driven näringsanalys',
+  title: '🤖 Hälsocoach',
+  description: 'Din personliga AI-assistent för hälsosam kost',
 }
 
 export default function RootLayout({
@@ -15,11 +15,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="sv">
+    <html lang="sv" className="dark">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-          {children}
-        </div>
+        {children}
       </body>
     </html>
   )

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, Save } from 'lucide-react';
+import { Settings, Save, X } from 'lucide-react';
 import { MacroGoals } from '@/types';
 import { setMacroGoals } from '@/lib/storage';
 
@@ -40,95 +40,120 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="btn-secondary flex items-center gap-2"
+        className="btn-pill-secondary flex items-center gap-2 hover-lift tap-effect"
       >
-        <Settings className="w-4 h-4" />
-        Ställ In Mål
+        <Settings className="w-5 h-5" />
+        <span className="font-semibold">Ställ In Mål</span>
       </button>
     );
   }
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Makromål</h2>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="text-gray-500 hover:text-gray-700 text-xl font-bold"
-        >
-          ×
-        </button>
+    <div className="space-y-4 animate-slide-up">
+      <div className="glass-card-strong">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-2xl font-bold text-white">Dina Makromål</h3>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="btn-pill-secondary w-10 h-10 p-0 tap-effect"
+            aria-label="Stäng"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="protein" className="block text-sm font-bold text-white">
+                Protein
+              </label>
+              <div className="relative">
+                <input
+                  id="protein"
+                  type="number"
+                  min="0"
+                  value={goals.protein}
+                  onChange={(e) => handleInputChange('protein', e.target.value)}
+                  className="input-field-large min-h-[60px] text-center text-2xl font-bold pr-12"
+                  placeholder="150"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 font-medium">
+                  g
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="carbs" className="block text-sm font-bold text-white">
+                Kolhydrater
+              </label>
+              <div className="relative">
+                <input
+                  id="carbs"
+                  type="number"
+                  min="0"
+                  value={goals.carbs}
+                  onChange={(e) => handleInputChange('carbs', e.target.value)}
+                  className="input-field-large min-h-[60px] text-center text-2xl font-bold pr-12"
+                  placeholder="200"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 font-medium">
+                  g
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="fat" className="block text-sm font-bold text-white">
+                Fett
+              </label>
+              <div className="relative">
+                <input
+                  id="fat"
+                  type="number"
+                  min="0"
+                  value={goals.fat}
+                  onChange={(e) => handleInputChange('fat', e.target.value)}
+                  className="input-field-large min-h-[60px] text-center text-2xl font-bold pr-12"
+                  placeholder="70"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 font-medium">
+                  g
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="calories" className="block text-sm font-bold text-white">
+                Kalorier
+              </label>
+              <div className="relative">
+                <input
+                  id="calories"
+                  type="number"
+                  min="0"
+                  value={goals.calories}
+                  onChange={(e) => handleInputChange('calories', e.target.value)}
+                  className="input-field-large min-h-[60px] text-center text-2xl font-bold pr-16"
+                  placeholder="2000"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 font-medium">
+                  kcal
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="btn-pill-primary w-full text-lg py-4 tap-effect hover-lift"
+          >
+            <Save className="w-6 h-6" />
+            <span className="font-bold">Spara Mål</span>
+          </button>
+        </form>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="protein" className="block text-sm font-semibold text-gray-900 mb-2">
-            Protein (gram)
-          </label>
-          <input
-            id="protein"
-            type="number"
-            min="0"
-            value={goals.protein}
-            onChange={(e) => handleInputChange('protein', e.target.value)}
-            className="input-field"
-            placeholder="150"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="carbs" className="block text-sm font-semibold text-gray-900 mb-2">
-            Kolhydrater (gram)
-          </label>
-          <input
-            id="carbs"
-            type="number"
-            min="0"
-            value={goals.carbs}
-            onChange={(e) => handleInputChange('carbs', e.target.value)}
-            className="input-field"
-            placeholder="200"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="fat" className="block text-sm font-semibold text-gray-900 mb-2">
-            Fett (gram)
-          </label>
-          <input
-            id="fat"
-            type="number"
-            min="0"
-            value={goals.fat}
-            onChange={(e) => handleInputChange('fat', e.target.value)}
-            className="input-field"
-            placeholder="70"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="calories" className="block text-sm font-semibold text-gray-900 mb-2">
-            Kalorier (kcal)
-          </label>
-          <input
-            id="calories"
-            type="number"
-            min="0"
-            value={goals.calories}
-            onChange={(e) => handleInputChange('calories', e.target.value)}
-            className="input-field"
-            placeholder="2000"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="btn-primary w-full flex items-center justify-center gap-2"
-        >
-          <Save className="w-4 h-4" />
-          Spara Mål
-        </button>
-      </form>
     </div>
   );
 } 

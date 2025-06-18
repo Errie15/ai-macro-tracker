@@ -1,144 +1,133 @@
-# 🤖 AI Makro Tracker
+# 🤖 Hälsocoach - AI Makro Tracker
 
-En modern webbapplikation för att spåra makronutrienter med hjälp av artificiell intelligens. Bygg med Next.js, React, Firebase och Gemini AI.
+Din personliga AI-assistent för hälsosam kost med modern glassmorphism-design och svenska språkstöd.
 
 ## ✨ Funktioner
 
-- **AI-driven näringsanalys** - Beskriv din måltid i fritext och få automatisk makrouppskattning
-- **Anpassningsbara mål** - Ställ in dina egna dagliga mål för protein, kolhydrater, fett och kalorier
-- **Realtidsspårning** - Se din dagliga progress jämfört med dina mål
-- **Röstinmatning** - Använd tal-till-text för snabb måltidsloggning
-- **Enkel hantering** - Lägg till och ta bort måltider enkelt
+- **Modern 2025 UI/UX Design** - Glassmorphism, exaggerated minimalism, mörkt läge som standard
+- **AI-driven näringsanalys** - Använder Google Gemini för exakt makroanalys
+- **Röstinmatning** - Beskriv dina måltider med svenskt språkstöd
+- **Geststöd** - Svep för att navigera och rensa fält
+- **Responsiv design** - Optimerad för enhandsanvändning på mobil
+- **Offline-kompatibel** - Fungerar utan inloggning
 
 ## 🚀 Kom igång
 
-### Förutsättningar
+1. **Klona projektet**
+   ```bash
+   git clone [repository-url]
+   cd ai-macro-tracker
+   ```
 
-- Node.js 18+ 
-- npm eller yarn
-- Gemini AI API-nyckel (gratis från Google)
+2. **Installera dependencies**
+   ```bash
+   npm install
+   ```
 
-### Installation
+3. **Konfigurera API-nyckel**
+   
+   Skapa en `.env.local` fil i projektets rot:
+   ```env
+   NEXT_PUBLIC_GEMINI_API_KEY=din_api_nyckel_här
+   ```
+   
+   **Hämta din Gemini API-nyckel:**
+   - Gå till [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Skapa eller logga in på ditt Google-konto
+   - Klicka på "Create API key"
+   - Kopiera nyckeln till din `.env.local` fil
 
-1. Klona projektet:
-```bash
-git clone <din-repo-url>
-cd ai-macro-tracker
-```
+4. **Starta utvecklingsservern**
+   ```bash
+   npm run dev
+   ```
 
-2. Installera beroenden:
-```bash
-npm install
-```
+5. **Öppna appen**
+   Navigera till [http://localhost:3000](http://localhost:3000)
 
-3. Skapa en `.env.local` fil i rotmappen:
-```env
-NEXT_PUBLIC_GEMINI_API_KEY=din_gemini_api_nyckel_här
-```
+## 🎨 Design-funktioner
 
-4. Starta utvecklingsservern:
-```bash
-npm run dev
-```
+### Glassmorphism & Modern UI
+- Frosted glass-effekter med backdrop blur
+- Smooth animationer och mikro-interaktioner
+- Pill-formade knappar med exaggerated roundness
+- Count-up animationer för dynamisk feedback
 
-5. Öppna [http://localhost:3000](http://localhost:3000) i din webbläsare
+### Mörkt/Ljust Tema
+- Mörkt läge som standard för bättre batterilivslängd
+- Adaptiv tema-toggle i hamburgermeny
+- Förbättrad kontrast för ljust läge för bättre läsbarhet
 
-### Skaffa Gemini API-nyckel
+### Mobiloptimering
+- Enhandsanvändning med stora touchytor
+- Floating action buttons för snabb åtkomst
+- Touch-gester för intuitiv navigation
+- Tumvänlig interaktion utan blockerade element
 
-1. Gå till [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Skapa ett nytt projekt eller använd ett befintligt
-3. Generera en API-nyckel
-4. Kopiera nyckeln till din `.env.local` fil
+## 🍱 Bento-Grid Layout
 
-## 📁 Projektstruktur
+Makronutrienter visas i färgkodade glassmorphism-block:
+- 🔵 **Protein** - Blå gradient
+- 🟢 **Kolhydrater** - Grön gradient  
+- 🟣 **Fett** - Lila gradient
+- 🟠 **Kalorier** - Orange gradient
 
-```
-src/
-├── app/
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── GoalsSettings.tsx
-│   ├── MacroProgress.tsx
-│   ├── MealInput.tsx
-│   └── MealList.tsx
-├── lib/
-│   ├── firebase.ts
-│   ├── gemini.ts
-│   └── storage.ts
-└── types/
-    └── index.ts
-```
+## 🎙️ Röstinmatning
 
-## 🛠️ Teknikstack
+- Stöder svensk röstigenkänning
+- Klicka på mikrofonikonen i inputfältet
+- Säg din måltidsbeskrivning på svenska
+- AI:n analyserar automatiskt näringsinnehållet
 
-- **Frontend**: Next.js 14, React, TypeScript
-- **Styling**: Tailwind CSS
-- **AI**: Google Gemini Pro
-- **Backend**: Firebase (framtida användning)
-- **Ikoner**: Lucide React
+## 🎯 Geststöd
 
-## 🔧 Utveckling
+- **Svep nedåt** på inputfältet: Rensa innehållet
+- **Svep vänster/höger**: Navigera i historik (kommer snart)
+- **Tap-effekter**: Visuell feedback på alla interaktioner
 
-### Byggkommandon
+## 🤖 AI-funktioner
 
-```bash
-# Utvecklingsserver
-npm run dev
+- Exakt näringsanalys baserat på svenska livsmedel
+- Intelligent portionsgissning
+- Felhantering med användarvänliga meddelanden
+- Fallback-värden om AI:n inte är tillgänglig
 
-# Bygga för produktion
-npm run build
+## 🛠️ Teknisk stack
 
-# Starta produktionsserver
-npm run start
+- **Framework**: Next.js 14 med App Router
+- **Styling**: Tailwind CSS med custom glassmorphism
+- **AI**: Google Gemini 1.5 Flash
+- **Icons**: Lucide React
+- **Language**: TypeScript
+- **Storage**: localStorage (offline-first)
 
-# Linting
-npm run lint
-```
+## 📱 Browser-stöd
 
-### Kodstil
+- Chrome/Edge (rekommenderas för bästa glassmorphism-stöd)
+- Safari (iOS/macOS)
+- Firefox
+- Röstinmatning kräver Chrome/Edge
 
-- Använd TypeScript för all kod
-- Följ komponentuppdelning (håll filer under 200 rader)
-- Använd svenska för all text i appen
-- Följ Tailwind CSS-konventioner
+## 🔧 Felsökning
 
-## 📝 Användning
+### API-nyckel fungerar inte
+- Kontrollera att `.env.local` finns i projektets rot
+- Se till att nyckeln börjar med `AIzaSy...`
+- Starta om utvecklingsservern efter ändringar
 
-1. **Ställ in mål**: Klicka på "Ställ In Mål" för att konfigurera dina dagliga makromål
-2. **Logga måltider**: Använd textfältet för att beskriva din måltid (t.ex. "50g proteinpulver, en banan och 10g jordnötssmör")
-3. **Röstinmatning**: Klicka på mikrofon-ikonen för att använda tal-till-text
-4. **Följ progress**: Se din dagliga progress i realtid
-5. **Hantera måltider**: Ta bort måltider om du behöver göra korrigeringar
+### Röstinmatning fungerar inte
+- Använd Chrome eller Edge-webbläsare
+- Tillåt mikrofon-åtkomst när webbläsaren frågar
+- Kontrollera att du är på en säker HTTPS-anslutning
 
-## 🔒 Säkerhet
-
-- API-nycklar lagras säkert som miljövariabler
-- Ingen känslig data skickas till tredje part
-- Lokal datalagring för användarintegritet
-
-## 🤝 Bidra
-
-Bidrag är välkomna! Vänligen:
-
-1. Forka projektet
-2. Skapa en feature-branch
-3. Commit dina ändringar
-4. Pusha till branchen
-5. Öppna en Pull Request
+### Glassmorphism-effekter syns inte
+- Uppdatera till senaste versionen av webbläsaren
+- Chrome/Safari har bäst stöd för backdrop-filter
 
 ## 📄 Licens
 
-Detta projekt är licensierat under MIT-licensen.
-
-## 🆘 Support
-
-Om du stöter på problem, vänligen:
-1. Kontrollera att din Gemini API-nyckel är korrekt
-2. Se till att alla beroenden är installerade
-3. Öppna ett issue på GitHub
+MIT License - Se LICENSE fil för detaljer.
 
 ---
 
-Gjord med ❤️ av Erik & Erik 
+Skapad med ❤️ för en hälsosammare livsstil 
