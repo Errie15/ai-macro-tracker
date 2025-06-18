@@ -34,16 +34,11 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [currentPage, setCurrentPage] = useState<'home' | 'meals' | 'calendar'>('home');
 
-  // Load data on component mount - basic data only
+  // Load basic data on component mount (theme only)
   useEffect(() => {
-    async function loadData() {
+    async function loadBasicData() {
       try {
-        console.log('🔄 Page loaded, starting to load data...');
-        
-        // Load goals and theme immediately (don't need auth)
-        const savedGoals = await getMacroGoals();
-        setGoals(savedGoals);
-        console.log('✅ Goals loaded');
+        console.log('🔄 Page loaded, starting to load basic data...');
         
         // Load theme preference
         const savedTheme = localStorage.getItem('isDarkMode');
@@ -57,18 +52,28 @@ export default function Home() {
       }
     }
 
-    loadData();
+    loadBasicData();
   }, []);
 
-  // Load meals when auth is ready
+  // Load goals and meals when auth is ready
   useEffect(() => {
-    async function loadMealsWhenReady() {
+    async function loadDataWhenReady() {
       if (!loading) {
         console.log('🔐 Auth is ready! User:', user?.uid || 'No user');
-        console.log('🔄 Loading today\'s meals...');
         
-        // Load meals directly here instead of calling loadTodaysMeals
+        // Load goals
         try {
+          console.log('🔄 Loading goals...');
+          const savedGoals = await getMacroGoals();
+          setGoals(savedGoals);
+          console.log('✅ Goals loaded:', savedGoals);
+        } catch (error) {
+          console.error('❌ Error loading goals:', error);
+        }
+        
+        // Load today's meals
+        try {
+          console.log('🔄 Loading today\'s meals...');
           const today = getTodayDateString();
           console.log('📅 Loading meals for date:', today);
           const meals = await getMealsByDate(today);
@@ -79,13 +84,13 @@ export default function Home() {
           console.error('❌ Error loading today\'s meals:', error);
         }
         
-        console.log('✅ Today\'s meals loading complete');
+        console.log('✅ Data loading complete');
       } else {
         console.log('⏳ Still waiting for auth to load...');
       }
     }
 
-    loadMealsWhenReady();
+    loadDataWhenReady();
   }, [loading, user]);
 
   // Calculate total macros when meals change
@@ -123,10 +128,12 @@ export default function Home() {
 
   const handleGoalsUpdated = async (newGoals: MacroGoals) => {
     try {
+      console.log('🎯 Updating goals:', newGoals);
       setGoals(newGoals);
       await setMacroGoals(newGoals);
+      console.log('✅ Goals updated successfully');
     } catch (error) {
-      console.error('Error updating goals:', error);
+      console.error('❌ Error updating goals:', error);
     }
   };
 
