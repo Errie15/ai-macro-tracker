@@ -35,20 +35,10 @@ export async function analyzeEnhancedMeal(mealDescription: string): Promise<AIRe
         console.log(`🔎 Searching USDA data for: ${food.name} (${food.grams}g)`);
         
         // Skip USDA for now, use AI fallback
-        const usdaResult: { macros: MacroNutrients } | null = null;
+        // const usdaResult: { macros: MacroNutrients } | null = null;
         
-        if (usdaResult) {
-          console.log(`✅ Found USDA data for ${food.name}:`, usdaResult.macros);
-          
-          totalMacros.protein += usdaResult.macros.protein;
-          totalMacros.carbs += usdaResult.macros.carbs;
-          totalMacros.fat += usdaResult.macros.fat;
-          totalMacros.calories += usdaResult.macros.calories;
-          
-          foundUSDAData = true;
-        } else {
-          console.log(`❌ No USDA data found for: ${food.name}`);
-        }
+        // Since USDA is disabled, we skip this entire block
+        console.log(`❌ No USDA data found for: ${food.name} (USDA disabled)`);
       } catch (error) {
         console.error(`Error searching USDA for ${food.name}:`, error);
       }
