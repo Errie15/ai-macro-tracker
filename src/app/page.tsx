@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { MacroGoals, MealEntry, MacroNutrients } from '@/types';
 import { getMacroGoals, setMacroGoals, getAllMeals, getMealsByDate, getTodayDateString } from '@/lib/storage';
 import MacroProgress from '@/components/MacroProgress';
@@ -277,6 +277,8 @@ export default function Home() {
             </div>
           </div>
         )}
+
+
       </div>
     </ProtectedRoute>
   );

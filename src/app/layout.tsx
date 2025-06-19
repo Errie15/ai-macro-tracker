@@ -46,7 +46,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#22c55e" />
         <link rel="apple-touch-icon" href="/icon-emoji.svg" />
         <link rel="icon" href="/icon-emoji.svg" type="image/svg+xml" />
-        <script
+<script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Plus, Loader2, Mic, MessageCircle, RotateCcw } from 'lucide-react';
-import { analyzeMeal } from '@/lib/gemini';
+import { analyzeEnhancedMeal } from '@/lib/enhanced-gemini';
 import { addMeal } from '@/lib/storage';
 import { MealEntry } from '@/types';
 
@@ -27,9 +27,9 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     setIsAnalyzing(true);
     
     try {
-      console.log('Starting AI analysis...');
-      const macros = await analyzeMeal(mealText.trim());
-      console.log('AI analysis complete, received macros:', macros);
+      console.log('Starting enhanced AI analysis...');
+      const macros = await analyzeEnhancedMeal(mealText.trim());
+      console.log('Enhanced AI analysis complete, received macros:', macros);
       
       const newMeal: MealEntry = {
         id: '', // Will be set by Firebase when saved
@@ -58,14 +58,14 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
 
   const startVoiceInput = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Röstigenkänning stöds inte i denna webbläsare');
+      alert('Speech recognition is not supported in this browser');
       return;
     }
 
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     
     if (!SpeechRecognition) {
-      alert('Röstigenkänning stöds inte i denna webbläsare');
+      alert('Speech recognition is not supported in this browser');
       return;
     }
     
@@ -85,7 +85,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     };
 
     recognition.onerror = (event) => {
-      console.error('Röstigenkänningsfel:', event.error);
+      console.error('Speech recognition error:', event.error);
       setIsListening(false);
     };
 
@@ -171,7 +171,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
                   type="button"
                   onClick={clearInput}
                   className="btn-pill-secondary w-12 h-12 p-0 tap-effect"
-                  title="Rensa fält"
+                  title="Clear field"
                 >
                   <RotateCcw className="w-5 h-5" />
                 </button>
@@ -184,7 +184,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
                 className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
                   isListening ? 'bg-red-500/20 border-red-400/30' : ''
                 }`}
-                title="Röstinmatning"
+                title="Voice input"
               >
                 <Mic className={`w-5 h-5 ${
                   isListening ? 'text-red-400 animate-pulse' : ''
