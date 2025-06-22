@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, X, Target, Globe, Sun, Moon, User, LogOut } from 'lucide-react';
-import { MacroGoals } from '@/types';
+import { MacroGoals, UserProfile } from '@/types';
 import GoalsSettings from './GoalsSettings';
+import ProfileSettings from './ProfileSettings';
 import { useAuth } from '@/contexts/AuthContext';
+import { getUserProfile } from '@/lib/storage';
 
 interface SettingsMenuProps {
   goals: MacroGoals;
@@ -20,7 +22,16 @@ export default function SettingsMenu({
   onToggleTheme
 }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile>({});
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    if (isOpen) {
+      const profile = getUserProfile();
+      setUserProfile(profile);
+    }
+  }, [isOpen]);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -37,6 +48,26 @@ export default function SettingsMenu({
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const getDisplayName = () => {
+    if (user?.isAnonymous) return 'Guest';
+    
+    // Use profile first name if available
+    if (userProfile.firstName) {
+      return userProfile.firstName;
+    }
+    
+    // Fall back to auth display name or email
+    if (user?.displayName) {
+      return user.displayName.split(' ')[0]; // Get first name only
+    }
+    
+    if (user?.email) {
+      return user.email.split('@')[0]; // Use part before @ as name
+    }
+    
+    return 'User';
   };
 
   return (
@@ -73,32 +104,19 @@ export default function SettingsMenu({
           <div className="p-6 border-b border-white/20">
             <h2 className="text-2xl font-bold text-primary mb-6">Settings</h2>
             
-            {/* User Info */}
+            {/* Compact User Info */}
             {user && (
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-white/10 mb-4">
-                <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-secondary" />
-                  <div>
-                    <span className="font-medium text-primary block">
-                      {user.isAnonymous ? 'Guest User' : (user.displayName || user.email || 'User')}
-                    </span>
-                    {!user.isAnonymous && user.email && (
-                      <span className="text-xs text-secondary">{user.email}</span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-secondary hover:text-red-400"
-                  aria-label="Sign out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/10 mb-6">
+                <User className="w-5 h-5 text-secondary" />
+                <span className="font-medium text-primary">
+                  {getDisplayName()}
+                </span>
               </div>
             )}
             
             {/* Settings Options */}
             <div className="space-y-3">
+              {/* Theme Setting */}
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white/10">
                 <div className="flex items-center gap-3">
                   <Sun className={`w-5 h-5 ${isDarkMode ? 'text-secondary' : 'text-yellow-500'}`} />
@@ -119,6 +137,7 @@ export default function SettingsMenu({
                 </button>
               </div>
 
+              {/* Language Setting */}
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white/10">
                 <div className="flex items-center gap-3">
                   <Globe className="w-5 h-5 text-secondary" />
@@ -126,6 +145,31 @@ export default function SettingsMenu({
                 </div>
                 <span className="text-sm text-secondary">English</span>
               </div>
+
+              {/* Profile Settings Button */}
+              <button
+                onClick={() => setShowProfile(true)}
+                className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors tap-effect"
+              >
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-secondary" />
+                  <span className="font-medium text-primary">Profile</span>
+                </div>
+                <span className="text-sm text-secondary">Edit →</span>
+              </button>
+
+              {/* Logout Button */}
+              {user && (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center justify-between w-full p-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 transition-colors tap-effect"
+                >
+                  <div className="flex items-center gap-3">
+                    <LogOut className="w-5 h-5 text-red-400" />
+                    <span className="font-medium text-red-400">Sign Out</span>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 
@@ -134,7 +178,7 @@ export default function SettingsMenu({
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
                 <Target className="w-5 h-5 text-blue-400" />
-                <h3 className="text-lg font-semibold text-primary">Set Goals</h3>
+                <h3 className="text-lg font-semibold text-primary">Macro Goals</h3>
               </div>
               <GoalsSettings 
                 currentGoals={goals}
@@ -144,6 +188,11 @@ export default function SettingsMenu({
           </div>
         </div>
       </div>
+
+      {/* Profile Settings Modal */}
+      {showProfile && (
+        <ProfileSettings onClose={() => setShowProfile(false)} />
+      )}
     </>
   );
 } 

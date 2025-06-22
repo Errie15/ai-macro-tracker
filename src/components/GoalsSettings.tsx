@@ -43,7 +43,7 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
     
     // Validate values
     if (goals.protein < 0 || goals.carbs < 0 || goals.fat < 0 || goals.calories < 0) {
-      alert('Alla värden måste vara positiva');
+      alert('All values must be positive');
       return;
     }
 
@@ -63,7 +63,7 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
   const handleCaloriesFocus = () => {
     if (!isManualCalories) {
       const confirmManual = window.confirm(
-        'Vill du ställa in kalorier manuellt istället för automatisk beräkning från makron?'
+        'Do you want to set calories manually instead of automatic calculation from macros?'
       );
       if (confirmManual) {
         setIsManualCalories(true);
@@ -87,7 +87,7 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
         className="btn-pill-secondary flex items-center gap-2 hover-lift tap-effect"
       >
         <Settings className="w-5 h-5" />
-        <span className="font-semibold">Sätt mål</span>
+        <span className="font-semibold">Set Goals</span>
       </button>
     );
   }
@@ -96,11 +96,11 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
     <div className="space-y-4 animate-slide-up">
       <div className="glass-card-strong max-w-sm mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-primary">Sätt dina mål</h3>
+          <h3 className="text-xl font-bold text-primary">Set Your Goals</h3>
           <button
             onClick={() => setIsOpen(false)}
             className="btn-pill-secondary w-10 h-10 p-0 tap-effect"
-            aria-label="Stäng"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -125,7 +125,7 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
 
             <div className="space-y-3">
               <label htmlFor="carbs" className="block text-sm font-semibold text-secondary">
-                Kolhydrater (g)
+                Carbs (g)
               </label>
               <input
                 id="carbs"
@@ -140,7 +140,7 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
 
             <div className="space-y-3">
               <label htmlFor="fat" className="block text-sm font-semibold text-secondary">
-                Fett (g)
+                Fat (g)
               </label>
               <input
                 id="fat"
@@ -155,9 +155,9 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
 
             <div className="space-y-3">
               <label htmlFor="calories" className="block text-sm font-semibold text-secondary">
-                Kalorier (kcal)
+                Calories (kcal)
                 {!isManualCalories && (
-                  <span className="text-xs text-gray-500 block">Automatisk beräkning</span>
+                  <span className="text-xs text-gray-500 block">Automatic calculation</span>
                 )}
               </label>
               <div className="relative">
@@ -191,14 +191,14 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
               onClick={() => setIsOpen(false)}
               className="btn-pill-secondary px-4 py-2 tap-effect text-sm"
             >
-              Avbryt
+              Cancel
             </button>
             <button
               type="submit"
               className="btn-pill-primary px-4 py-2 tap-effect hover-lift text-sm"
             >
               <Save className="w-4 h-4" />
-              <span className="font-semibold">Spara</span>
+              <span className="font-semibold">Save</span>
             </button>
           </div>
         </form>

@@ -3,7 +3,13 @@
     "users": {
       "$uid": {
         ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".write": "$uid === auth.uid",
+        "meals": {
+          ".indexOn": ["date", "timestamp"]
+        },
+        "weight": {
+          ".indexOn": ["date", "timestamp"]
+        }
       }
     }
   }

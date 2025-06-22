@@ -35,6 +35,42 @@ export interface AIResponse {
   confidence?: number;
 }
 
+// Profile and user data types
+export interface UserProfile {
+  firstName?: string;
+  lastName?: string;
+  gender?: 'male' | 'female' | 'other' | '';
+  height?: number; // in cm
+  weight?: number; // in kg
+  age?: number;
+  activityLevel?: 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extremely_active';
+  fitnessGoals?: FitnessGoal[];
+}
+
+export interface FitnessGoal {
+  id: string;
+  type: 'lose_weight' | 'gain_muscle' | 'maintain_weight' | 'improve_endurance' | 'get_stronger' | 'improve_health' | 'other';
+  description?: string;
+  targetDate?: string; // YYYY-MM-DD format
+  isActive: boolean;
+}
+
+export interface WeightEntry {
+  id: string;
+  weight: number; // in kg
+  date: string; // YYYY-MM-DD format
+  timestamp: string; // ISO string
+  note?: string;
+}
+
+export interface DayDetail {
+  date: string;
+  meals: MealEntry[];
+  weightEntry?: WeightEntry;
+  dailyProgress: DailyProgress;
+  userGoals: FitnessGoal[];
+}
+
 // USDA FoodData Central API types
 export interface USDANutrient {
   nutrientId?: number;

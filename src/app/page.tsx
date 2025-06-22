@@ -95,6 +95,65 @@ export default function Home() {
     loadDataWhenReady();
   }, [loading, user]);
 
+  // Auto-refresh at midnight to reset daily progress
+  useEffect(() => {
+    const checkForNewDay = () => {
+      const now = new Date();
+      const currentDateString = getTodayDateString();
+      
+      // Check if we have meals loaded and if the date has changed
+      if (todaysMeals.length > 0) {
+        const lastMealDate = todaysMeals[0]?.date;
+        if (lastMealDate && lastMealDate !== currentDateString) {
+          console.log('🌅 New day detected! Refreshing daily progress...');
+          loadTodaysMeals(); // This will load meals for the new day (should be empty)
+        }
+      }
+    };
+
+    // Calculate milliseconds until next midnight
+    const getMillisecondsUntilMidnight = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      return tomorrow.getTime() - now.getTime();
+    };
+
+    // Set timeout for exact midnight reset
+    const msUntilMidnight = getMillisecondsUntilMidnight();
+    const midnightTimeout = setTimeout(() => {
+      console.log('🌙 Midnight reached! Resetting daily progress...');
+      loadTodaysMeals(); // Reset to new day's meals (empty)
+      
+      // Set up daily interval for subsequent midnights
+      const dailyInterval = setInterval(() => {
+        console.log('🌙 Daily reset at midnight...');
+        loadTodaysMeals();
+      }, 24 * 60 * 60 * 1000); // 24 hours
+
+      return () => clearInterval(dailyInterval);
+    }, msUntilMidnight);
+
+    // Also check every minute for date changes (backup)
+    const checkInterval = setInterval(checkForNewDay, 60000);
+
+    // Check when the page becomes visible (user switches tabs)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkForNewDay();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearTimeout(midnightTimeout);
+      clearInterval(checkInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [todaysMeals]);
+
   // Calculate total macros when meals change
   useEffect(() => {
     const newTotalMacros = todaysMeals.reduce(
