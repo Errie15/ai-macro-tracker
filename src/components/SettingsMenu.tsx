@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, X, Target, Globe, Sun, Moon, User, LogOut } from 'lucide-react';
+import { Settings, X, Target, Globe, Sun, Moon, User, LogOut, HelpCircle } from 'lucide-react';
 import { MacroGoals, UserProfile } from '@/types';
 import GoalsSettings from './GoalsSettings';
 import ProfileSettings from './ProfileSettings';
+// import OnboardingHelp from './OnboardingHelp';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile } from '@/lib/storage';
 
@@ -23,13 +24,15 @@ export default function SettingsMenu({
 }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({});
   const { user, logout } = useAuth();
 
   useEffect(() => {
     if (isOpen) {
-      const profile = getUserProfile();
-      setUserProfile(profile);
+      getUserProfile().then(profile => {
+        setUserProfile(profile);
+      });
     }
   }, [isOpen]);
 
@@ -158,6 +161,18 @@ export default function SettingsMenu({
                 <span className="text-sm text-secondary">Edit →</span>
               </button>
 
+              {/* Help/Onboarding Button */}
+              <button
+                onClick={() => setShowOnboarding(true)}
+                className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors tap-effect"
+              >
+                <div className="flex items-center gap-3">
+                  <HelpCircle className="w-5 h-5 text-secondary" />
+                  <span className="font-medium text-primary">Help & Tutorial</span>
+                </div>
+                <span className="text-sm text-secondary">Learn →</span>
+              </button>
+
               {/* Logout Button */}
               {user && (
                 <button
@@ -192,6 +207,24 @@ export default function SettingsMenu({
       {/* Profile Settings Modal */}
       {showProfile && (
         <ProfileSettings onClose={() => setShowProfile(false)} />
+      )}
+
+      {/* Help Tutorial Modal */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-50 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 overflow-y-auto">
+          <div className="glass-card-strong m-4 p-6 rounded-3xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-primary">Help & Tutorial</h2>
+              <button
+                onClick={() => setShowOnboarding(false)}
+                className="btn-pill-secondary w-10 h-10 p-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-secondary">Tutorial content will be available here.</p>
+          </div>
+        </div>
       )}
     </>
   );

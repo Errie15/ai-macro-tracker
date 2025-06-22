@@ -9,7 +9,6 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signInAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -72,12 +71,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await signInWithPopup(auth, provider);
   };
 
-  const signInAsGuest = async () => {
-    const { auth } = await import('@/lib/firebase');
-    const { signInAnonymously } = await import('firebase/auth');
-    await signInAnonymously(auth);
-  };
-
   const logout = async () => {
     const { auth } = await import('@/lib/firebase');
     const { signOut } = await import('firebase/auth');
@@ -90,7 +83,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signIn,
     signUp,
     signInWithGoogle,
-    signInAsGuest,
     logout
   };
 

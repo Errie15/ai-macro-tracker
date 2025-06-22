@@ -37,8 +37,12 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
   const [showAddGoal, setShowAddGoal] = useState(false);
 
   useEffect(() => {
-    const savedProfile = getUserProfile();
-    setProfile(savedProfile);
+    getUserProfile().then(savedProfile => {
+      console.log('📖 ProfileSettings loading profile:', savedProfile);
+      setProfile(savedProfile);
+    }).catch(error => {
+      console.error('❌ Error loading profile in ProfileSettings:', error);
+    });
   }, []);
 
   const handleInputChange = (field: keyof UserProfile, value: string | number) => {
@@ -48,9 +52,9 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUserProfile(profile);
+    await setUserProfile(profile);
     onClose();
   };
 

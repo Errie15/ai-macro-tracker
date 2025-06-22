@@ -212,14 +212,9 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               className="btn-pill-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed tap-effect"
             >
               {isAnalyzing ? (
-                <div className="flex items-center justify-center gap-3 ai-thinking">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                  <span className="font-bold">AI analyserar...</span>
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
-                    <div className="w-2 h-2 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
-                  </div>
+                <div className="flex items-center justify-center gap-2 ai-thinking">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="font-bold text-sm">Analyzing...</span>
                 </div>
               ) : (
                 <>

@@ -1,4 +1,4 @@
-import { MacroGoals, MealEntry, DailyProgress, UserProfile, WeightEntry } from '@/types';
+import { MacroGoals, MealEntry, DailyProgress, UserProfile, WeightEntry, OnboardingState } from '@/types';
 import { 
   ref, 
   get, 
@@ -11,44 +11,23 @@ import {
   orderByKey
 } from 'firebase/database';
 import { db } from './firebase';
+import { getAuth } from 'firebase/auth';
 
 const MACRO_GOALS_KEY = 'macro-tracker-goals';
 const MEALS_KEY = 'macro-tracker-meals';
 const USER_PROFILE_KEY = 'macro-tracker-profile';
 const WEIGHT_ENTRIES_KEY = 'macro-tracker-weight';
+const ONBOARDING_KEY = 'macro-tracker-onboarding';
 
-// Get current user - will be imported dynamically to avoid SSR issues
-async function getCurrentUser() {
-  try {
-    const { auth } = await import('./firebase');
-    return auth.currentUser;
-  } catch (error) {
-    console.error('Error getting current user:', error);
-    return null;
-  }
-}
-
-// Fallback to localStorage for non-authenticated users or errors
-function getFromLocalStorage<T>(key: string, defaultValue: T): T {
-  if (typeof window === 'undefined') return defaultValue;
-  
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
-  } catch (error) {
-    console.error(`Error reading from localStorage for key ${key}:`, error);
-    return defaultValue;
-  }
-}
-
-function setToLocalStorage<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`Error saving to localStorage for key ${key}:`, error);
-  }
+// Helper function to get current authenticated user
+async function getCurrentUser(): Promise<any> {
+  return new Promise((resolve) => {
+    const auth = getAuth();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      unsubscribe();
+      resolve(user);
+    });
+  });
 }
 
 // Macro Goals Functions
@@ -56,13 +35,13 @@ export async function getMacroGoals(): Promise<MacroGoals> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    return getFromLocalStorage(MACRO_GOALS_KEY, {
+    // Return default goals for non-authenticated users
+    return {
       protein: 150,
       carbs: 200,
       fat: 70,
       calories: 2000,
-    });
+    };
   }
 
   try {
@@ -84,13 +63,12 @@ export async function getMacroGoals(): Promise<MacroGoals> {
     }
   } catch (error) {
     console.error('Error fetching macro goals from Realtime Database:', error);
-    // Fallback to localStorage
-    return getFromLocalStorage(MACRO_GOALS_KEY, {
+    return {
       protein: 150,
       carbs: 200,
       fat: 70,
       calories: 2000,
-    });
+    };
   }
 }
 
@@ -98,8 +76,7 @@ export async function setMacroGoals(goals: MacroGoals): Promise<void> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    setToLocalStorage(MACRO_GOALS_KEY, goals);
+    console.warn('Cannot save macro goals: user not authenticated');
     return;
   }
 
@@ -108,8 +85,7 @@ export async function setMacroGoals(goals: MacroGoals): Promise<void> {
     await set(goalsRef, goals);
   } catch (error) {
     console.error('Error saving macro goals to Realtime Database:', error);
-    // Fallback to localStorage
-    setToLocalStorage(MACRO_GOALS_KEY, goals);
+    throw error;
   }
 }
 
@@ -118,8 +94,8 @@ export async function getAllMeals(): Promise<MealEntry[]> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    return getFromLocalStorage(MEALS_KEY, []);
+    // Return empty array for non-authenticated users
+    return [];
   }
 
   try {
@@ -139,8 +115,7 @@ export async function getAllMeals(): Promise<MealEntry[]> {
     }
   } catch (error) {
     console.error('Error fetching meals from Realtime Database:', error);
-    // Fallback to localStorage
-    return getFromLocalStorage(MEALS_KEY, []);
+    return [];
   }
 }
 
@@ -148,9 +123,8 @@ export async function getMealsByDate(date: string): Promise<MealEntry[]> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    const allMeals: MealEntry[] = getFromLocalStorage(MEALS_KEY, []);
-    return allMeals.filter((meal: MealEntry) => meal.date === date);
+    // Return empty array for non-authenticated users
+    return [];
   }
 
   try {
@@ -174,9 +148,7 @@ export async function getMealsByDate(date: string): Promise<MealEntry[]> {
     }
   } catch (error) {
     console.error('Error fetching meals by date from Realtime Database:', error);
-    // Fallback to localStorage
-    const allMeals: MealEntry[] = getFromLocalStorage(MEALS_KEY, []);
-    return allMeals.filter((meal: MealEntry) => meal.date === date);
+    return [];
   }
 }
 
@@ -184,15 +156,7 @@ export async function addMeal(meal: MealEntry): Promise<void> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    // Generate an ID for localStorage
-    const mealWithId = {
-      ...meal,
-      id: Date.now().toString()
-    };
-    const allMeals: MealEntry[] = getFromLocalStorage(MEALS_KEY, []);
-    allMeals.push(mealWithId);
-    setToLocalStorage(MEALS_KEY, allMeals);
+    console.warn('Cannot save meal: user not authenticated');
     return;
   }
 
@@ -209,14 +173,7 @@ export async function addMeal(meal: MealEntry): Promise<void> {
     await push(mealsRef, mealData);
   } catch (error) {
     console.error('Error adding meal to Realtime Database:', error);
-    // Fallback to localStorage
-    const mealWithId = {
-      ...meal,
-      id: Date.now().toString()
-    };
-    const allMeals: MealEntry[] = getFromLocalStorage(MEALS_KEY, []);
-    allMeals.push(mealWithId);
-    setToLocalStorage(MEALS_KEY, allMeals);
+    throw error;
   }
 }
 
@@ -224,10 +181,7 @@ export async function deleteMeal(mealId: string): Promise<void> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    const allMeals: MealEntry[] = getFromLocalStorage(MEALS_KEY, []);
-    const filteredMeals = allMeals.filter((meal: MealEntry) => meal.id !== mealId);
-    setToLocalStorage(MEALS_KEY, filteredMeals);
+    console.warn('Cannot delete meal: user not authenticated');
     return;
   }
 
@@ -236,10 +190,7 @@ export async function deleteMeal(mealId: string): Promise<void> {
     await remove(mealRef);
   } catch (error) {
     console.error('Error deleting meal from Realtime Database:', error);
-    // Fallback to localStorage
-    const allMeals: MealEntry[] = getFromLocalStorage(MEALS_KEY, []);
-    const filteredMeals = allMeals.filter((meal: MealEntry) => meal.id !== mealId);
-    setToLocalStorage(MEALS_KEY, filteredMeals);
+    throw error;
   }
 }
 
@@ -249,27 +200,53 @@ export function getTodayDateString(): string {
 }
 
 // User Profile functions
-export const getUserProfile = (): UserProfile => {
-  if (typeof window === 'undefined') return {};
+export async function getUserProfile(): Promise<UserProfile> {
+  const user = await getCurrentUser();
   
-  try {
-    const stored = localStorage.getItem(USER_PROFILE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
-    console.error('Error loading user profile:', error);
+  if (!user) {
+    console.log('📭 No user authenticated, returning empty profile');
     return {};
   }
-};
 
-export const setUserProfile = (profile: UserProfile): void => {
-  if (typeof window === 'undefined') return;
-  
   try {
-    localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+    console.log('📖 Loading profile from Firebase for user:', user.uid);
+    const profileRef = ref(db, `users/${user.uid}/profile`);
+    const snapshot = await get(profileRef);
+    
+    if (snapshot.exists()) {
+      const profileData = snapshot.val() as UserProfile;
+      console.log('✅ Profile loaded from Firebase:', profileData);
+      return profileData;
+    } else {
+      console.log('📭 No profile found in Firebase, returning empty profile');
+      return {};
+    }
   } catch (error) {
-    console.error('Error saving user profile:', error);
+    console.error('❌ Error fetching user profile from Realtime Database:', error);
+    return {};
   }
-};
+}
+
+export async function setUserProfile(profile: UserProfile): Promise<void> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    console.warn('Cannot save profile: user not authenticated');
+    return;
+  }
+
+  try {
+    console.log('💾 Saving profile to Firebase for user:', user.uid);
+    console.log('📊 Profile data:', profile);
+    const profileRef = ref(db, `users/${user.uid}/profile`);
+    await set(profileRef, profile);
+    console.log('✅ Profile saved successfully to Firebase');
+  } catch (error) {
+    console.error('❌ Error saving user profile to Realtime Database:', error);
+    console.error('Error details:', error);
+    throw error;
+  }
+}
 
 // Weight tracking functions
 export async function addWeightEntry(weight: number, date: string, note?: string): Promise<void> {
@@ -284,10 +261,7 @@ export async function addWeightEntry(weight: number, date: string, note?: string
   };
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    const allEntries: WeightEntry[] = getFromLocalStorage(WEIGHT_ENTRIES_KEY, []);
-    allEntries.push(weightEntry);
-    setToLocalStorage(WEIGHT_ENTRIES_KEY, allEntries);
+    console.warn('Cannot save weight entry: user not authenticated');
     return;
   }
 
@@ -307,10 +281,7 @@ export async function addWeightEntry(weight: number, date: string, note?: string
     await push(weightRef, weightData);
   } catch (error) {
     console.error('Error adding weight entry to Realtime Database:', error);
-    // Fallback to localStorage
-    const allEntries: WeightEntry[] = getFromLocalStorage(WEIGHT_ENTRIES_KEY, []);
-    allEntries.push(weightEntry);
-    setToLocalStorage(WEIGHT_ENTRIES_KEY, allEntries);
+    throw error;
   }
 }
 
@@ -318,8 +289,8 @@ export async function getWeightEntries(): Promise<WeightEntry[]> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    return getFromLocalStorage(WEIGHT_ENTRIES_KEY, []);
+    // Return empty array for non-authenticated users
+    return [];
   }
 
   try {
@@ -338,8 +309,7 @@ export async function getWeightEntries(): Promise<WeightEntry[]> {
     }
   } catch (error) {
     console.error('Error fetching weight entries from Realtime Database:', error);
-    // Fallback to localStorage
-    return getFromLocalStorage(WEIGHT_ENTRIES_KEY, []);
+    return [];
   }
 }
 
@@ -347,9 +317,8 @@ export async function getWeightEntryByDate(date: string): Promise<WeightEntry | 
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    const allEntries: WeightEntry[] = getFromLocalStorage(WEIGHT_ENTRIES_KEY, []);
-    return allEntries.find(entry => entry.date === date) || null;
+    // Return null for non-authenticated users
+    return null;
   }
 
   try {
@@ -371,9 +340,7 @@ export async function getWeightEntryByDate(date: string): Promise<WeightEntry | 
     }
   } catch (error) {
     console.error('Error fetching weight entry by date from Realtime Database:', error);
-    // Fallback to localStorage
-    const allEntries: WeightEntry[] = getFromLocalStorage(WEIGHT_ENTRIES_KEY, []);
-    return allEntries.find(entry => entry.date === date) || null;
+    return null;
   }
 }
 
@@ -381,10 +348,7 @@ export async function deleteWeightEntry(entryId: string): Promise<void> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Fallback to localStorage for non-authenticated users
-    const allEntries: WeightEntry[] = getFromLocalStorage(WEIGHT_ENTRIES_KEY, []);
-    const filteredEntries = allEntries.filter((entry: WeightEntry) => entry.id !== entryId);
-    setToLocalStorage(WEIGHT_ENTRIES_KEY, filteredEntries);
+    console.warn('Cannot delete weight entry: user not authenticated');
     return;
   }
 
@@ -393,10 +357,7 @@ export async function deleteWeightEntry(entryId: string): Promise<void> {
     await remove(entryRef);
   } catch (error) {
     console.error('Error deleting weight entry from Realtime Database:', error);
-    // Fallback to localStorage
-    const allEntries: WeightEntry[] = getFromLocalStorage(WEIGHT_ENTRIES_KEY, []);
-    const filteredEntries = allEntries.filter((entry: WeightEntry) => entry.id !== entryId);
-    setToLocalStorage(WEIGHT_ENTRIES_KEY, filteredEntries);
+    throw error;
   }
 }
 
@@ -428,4 +389,106 @@ export async function getDatesWithData(): Promise<{
   });
   
   return { mealsData, weightData, allData };
+}
+
+// Onboarding Functions
+export async function getOnboardingState(): Promise<OnboardingState> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    // Return default onboarding state for non-authenticated users
+    return {
+      isCompleted: false,
+      currentStep: 0,
+      completedSteps: []
+    };
+  }
+
+  try {
+    const onboardingRef = ref(db, `users/${user.uid}/onboarding`);
+    const snapshot = await get(onboardingRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.val() as OnboardingState;
+    } else {
+      // Return default onboarding state for new users
+      const defaultState: OnboardingState = {
+        isCompleted: false,
+        currentStep: 0,
+        completedSteps: []
+      };
+      return defaultState;
+    }
+  } catch (error) {
+    console.error('Error fetching onboarding state from Realtime Database:', error);
+    return {
+      isCompleted: false,
+      currentStep: 0,
+      completedSteps: []
+    };
+  }
+}
+
+export async function setOnboardingState(state: OnboardingState): Promise<void> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    console.warn('Cannot save onboarding state: user not authenticated');
+    return;
+  }
+
+  try {
+    const onboardingRef = ref(db, `users/${user.uid}/onboarding`);
+    await set(onboardingRef, state);
+  } catch (error) {
+    console.error('Error saving onboarding state to Realtime Database:', error);
+    throw error;
+  }
+}
+
+export async function isUserOnboarded(): Promise<boolean> {
+  const onboardingState = await getOnboardingState();
+  return onboardingState.isCompleted;
+}
+
+// Theme Settings Functions
+export async function getUserTheme(): Promise<boolean> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    // Return default theme (light mode) for non-authenticated users
+    return false;
+  }
+
+  try {
+    const themeRef = ref(db, `users/${user.uid}/settings/isDarkMode`);
+    const snapshot = await get(themeRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.val() as boolean;
+    } else {
+      // Return default theme (light mode) for new users
+      return false;
+    }
+  } catch (error) {
+    console.error('Error fetching theme preference from Realtime Database:', error);
+    return false;
+  }
+}
+
+export async function setUserTheme(isDarkMode: boolean): Promise<void> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    console.warn('Cannot save theme preference: user not authenticated');
+    return;
+  }
+
+  try {
+    const themeRef = ref(db, `users/${user.uid}/settings/isDarkMode`);
+    await set(themeRef, isDarkMode);
+  } catch (error) {
+    console.error('Error saving theme preference to Realtime Database:', error);
+    throw error;
+  }
 } 

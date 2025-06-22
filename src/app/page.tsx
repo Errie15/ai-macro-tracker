@@ -41,15 +41,16 @@ export default function Home() {
       try {
         console.log('🔄 Page loaded, starting to load theme...');
         
-        // Load theme preference
-        const savedTheme = localStorage.getItem('isDarkMode');
-        if (savedTheme !== null) {
-          setIsDarkMode(JSON.parse(savedTheme));
-        }
+        // Load theme preference from Firebase
+        const { getUserTheme } = await import('@/lib/storage');
+        const savedTheme = await getUserTheme();
+        setIsDarkMode(savedTheme);
         
         console.log('✅ Theme loaded successfully');
       } catch (error) {
         console.error('❌ Error loading theme:', error);
+        // Default to dark mode on error
+        setIsDarkMode(true);
       }
     }
 
@@ -209,10 +210,16 @@ export default function Home() {
     }
   };
 
-  const toggleTheme = () => {
+  const toggleTheme = async () => {
     const newTheme = !isDarkMode;
     setIsDarkMode(newTheme);
-    localStorage.setItem('isDarkMode', JSON.stringify(newTheme));
+    
+    try {
+      const { setUserTheme } = await import('@/lib/storage');
+      await setUserTheme(newTheme);
+    } catch (error) {
+      console.error('Error saving theme preference:', error);
+    }
   };
 
   const handleNavigation = (page: 'home' | 'meals' | 'calendar') => {

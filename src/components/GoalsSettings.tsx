@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Save, X } from 'lucide-react';
-import { MacroGoals } from '@/types';
-import { setMacroGoals } from '@/lib/storage';
+import { Settings, Save, X, Sparkles, Calculator } from 'lucide-react';
+import { MacroGoals, UserProfile } from '@/types';
+import { setMacroGoals, getUserProfile } from '@/lib/storage';
 
 interface GoalsSettingsProps {
   currentGoals: MacroGoals;
@@ -14,16 +14,67 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
   const [isOpen, setIsOpen] = useState(false);
   const [goals, setGoals] = useState(currentGoals);
   const [isManualCalories, setIsManualCalories] = useState(false);
+  const [showMethodSelection, setShowMethodSelection] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile>({});
 
   // Update local state when currentGoals prop changes
   useEffect(() => {
     setGoals(currentGoals);
   }, [currentGoals]);
 
+  // Load user profile when opening
+  useEffect(() => {
+    if (isOpen) {
+      getUserProfile().then(profile => {
+        setUserProfile(profile);
+      });
+    }
+  }, [isOpen]);
+
   // Calculate calories automatically from macros
   const calculateCalories = useCallback((protein: number, carbs: number, fat: number) => {
     return Math.round(protein * 4 + carbs * 4 + fat * 9);
   }, []);
+
+  // AI-powered macro calculation (same logic as onboarding)
+  const calculateAIMacros = useCallback(() => {
+    if (!userProfile.age || !userProfile.weight || !userProfile.height || !userProfile.gender || !userProfile.activityLevel) {
+      alert('Please complete your profile first to use AI macro calculation');
+      return null;
+    }
+
+    // Calculate BMR using Mifflin-St Jeor Equation
+    let bmr: number;
+    if (userProfile.gender === 'male') {
+      bmr = 10 * userProfile.weight + 6.25 * userProfile.height - 5 * userProfile.age + 5;
+    } else {
+      bmr = 10 * userProfile.weight + 6.25 * userProfile.height - 5 * userProfile.age - 161;
+    }
+
+    // Calculate TDEE based on activity level
+    const activityMultipliers = {
+      sedentary: 1.2,
+      lightly_active: 1.375,
+      moderately_active: 1.55,
+      very_active: 1.725,
+      extremely_active: 1.9
+    };
+
+    const tdee = Math.round(bmr * activityMultipliers[userProfile.activityLevel]);
+
+    // Calculate macros with optimal ratios
+    const proteinPerKg = 2.2; // 2.2g per kg body weight
+    const protein = Math.round(userProfile.weight * proteinPerKg);
+    const fat = Math.round(tdee * 0.25 / 9); // 25% of calories from fat
+    const carbs = Math.round((tdee - (protein * 4) - (fat * 9)) / 4); // Remaining calories from carbs
+
+    return {
+      calories: tdee,
+      protein,
+      carbs,
+      fat
+    };
+  }, [userProfile]);
 
   // Update calories automatically when macros change (unless manual mode)
   useEffect(() => {
@@ -80,10 +131,29 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
     }));
   };
 
+  const handleAICalculation = () => {
+    const aiMacros = calculateAIMacros();
+    if (aiMacros) {
+      setGoals(aiMacros);
+      setShowMethodSelection(false);
+    }
+  };
+
+  const handleManualSetup = () => {
+    setShowMethodSelection(false);
+  };
+
+  const openMethodSelection = () => {
+    setShowMethodSelection(true);
+  };
+
   if (!isOpen) {
     return (
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          setIsOpen(true);
+          setShowMethodSelection(true);
+        }}
         className="btn-pill-secondary flex items-center gap-2 hover-lift tap-effect"
       >
         <Settings className="w-5 h-5" />
@@ -92,18 +162,97 @@ export default function GoalsSettings({ currentGoals, onGoalsUpdated }: GoalsSet
     );
   }
 
+  // Method Selection UI
+  if (showMethodSelection) {
+    return (
+      <div className="space-y-4 animate-slide-up">
+        <div className="glass-card-strong max-w-md mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-primary">How would you like to set your macros?</h3>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                setShowMethodSelection(false);
+              }}
+              className="btn-pill-secondary w-10 h-10 p-0 tap-effect"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid gap-4">
+            {/* AI Expert Option */}
+            <button
+              onClick={handleAICalculation}
+              className="glass-card p-6 hover:bg-white/20 transition-all duration-300 tap-effect hover-lift group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-300">
+                  <Sparkles className="w-6 h-6 text-blue-500" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h4 className="text-lg font-bold text-primary mb-2">AI Expert Recommendation</h4>
+                  <p className="text-secondary text-sm leading-relaxed">
+                    Let our AI calculate personalized macro goals based on your profile and fitness objectives.
+                  </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-xs bg-blue-500/20 text-blue-600 px-2 py-1 rounded-full font-medium">
+                      Recommended
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {/* Manual Setup Option */}
+            <button
+              onClick={handleManualSetup}
+              className="glass-card p-6 hover:bg-white/20 transition-all duration-300 tap-effect hover-lift group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-2xl bg-gradient-to-r from-gray-500/20 to-slate-500/20 group-hover:from-gray-500/30 group-hover:to-slate-500/30 transition-all duration-300">
+                  <Calculator className="w-6 h-6 text-gray-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h4 className="text-lg font-bold text-primary mb-2">Manual Setup</h4>
+                  <p className="text-secondary text-sm leading-relaxed">
+                    Set your own macro targets based on your personal preferences and experience.
+                  </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-xs bg-gray-500/20 text-gray-600 px-2 py-1 rounded-full font-medium">
+                      Advanced
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 animate-slide-up">
       <div className="glass-card-strong max-w-sm mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold text-primary">Set Your Goals</h3>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="btn-pill-secondary w-10 h-10 p-0 tap-effect"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openMethodSelection}
+              className="btn-pill-secondary text-xs px-3 py-1 tap-effect"
+            >
+              Switch Method
+            </button>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="btn-pill-secondary w-10 h-10 p-0 tap-effect"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

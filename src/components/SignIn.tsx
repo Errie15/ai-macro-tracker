@@ -10,7 +10,7 @@ export default function SignIn() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { signIn, signUp, signInWithGoogle, signInAsGuest } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,18 +35,6 @@ export default function SignIn() {
     setLoading(true);
     try {
       await signInWithGoogle();
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGuestSignIn = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      await signInAsGuest();
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -126,14 +114,6 @@ export default function SignIn() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             Continue with Google
-          </button>
-
-          <button
-            onClick={handleGuestSignIn}
-            disabled={loading}
-            className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Continue as Guest
           </button>
         </div>
 

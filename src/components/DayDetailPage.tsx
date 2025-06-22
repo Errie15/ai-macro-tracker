@@ -63,7 +63,7 @@ export default function DayDetailPage({ date, onBack, onAddMeal }: DayDetailPage
         getWeightEntryByDate(date),
         getWeightEntries(),
         getMacroGoals(),
-        Promise.resolve(getUserProfile())
+        getUserProfile()
       ]);
 
       setMeals(mealsData);

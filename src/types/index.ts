@@ -35,6 +35,15 @@ export interface AIResponse {
   confidence?: number;
 }
 
+// Onboarding types
+export interface OnboardingState {
+  isCompleted: boolean;
+  currentStep: number;
+  completedSteps: string[];
+}
+
+export type OnboardingStep = 'profile' | 'macros' | 'walkthrough';
+
 // Profile and user data types
 export interface UserProfile {
   firstName?: string;

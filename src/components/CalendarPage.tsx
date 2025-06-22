@@ -52,7 +52,7 @@ export default function CalendarPage({ onBack, onAddMeal }: CalendarPageProps) {
     try {
       const [dateData, profile] = await Promise.all([
         getDatesWithData(),
-        Promise.resolve(getUserProfile())
+        getUserProfile()
       ]);
       setDatesWithMeals(dateData.mealsData);
       setDatesWithWeight(dateData.weightData);
