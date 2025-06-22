@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Sparkles, User, Target, BookOpen } from 'lucide-react';
 import { OnboardingState, OnboardingStep } from '@/types';
 import OnboardingProfile from './OnboardingProfile';
 import OnboardingMacros from './OnboardingMacros';
@@ -11,21 +11,24 @@ interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
-const ONBOARDING_STEPS: { id: OnboardingStep; title: string; description: string }[] = [
+const ONBOARDING_STEPS: { id: OnboardingStep; title: string; description: string; icon: any }[] = [
   {
     id: 'profile',
-    title: 'Set Up Your Profile',
-    description: 'Tell us about yourself to personalize your experience'
+    title: 'Personal Information',
+    description: 'Basic details for accurate calculations',
+    icon: User
   },
   {
     id: 'macros',
-    title: 'Configure Your Macros',
-    description: 'Set your macro goals to track your nutrition effectively'
+    title: 'Macro Targets',
+    description: 'Set your daily nutritional goals',
+    icon: Target
   },
   {
     id: 'walkthrough',
-    title: 'Learn the App',
-    description: 'Discover how to make the most of your macro tracking'
+    title: 'Quick Overview',
+    description: 'Learn the essential features',
+    icon: BookOpen
   }
 ];
 
@@ -33,10 +36,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<OnboardingStep[]>([]);
   const [isStepComplete, setIsStepComplete] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const currentStep = ONBOARDING_STEPS[currentStepIndex];
-
-  // No theme forcing - use user's current theme
 
   const handleStepComplete = useCallback((stepId: OnboardingStep) => {
     if (!completedSteps.includes(stepId)) {
@@ -53,6 +55,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [currentStep.id, completedSteps, handleStepComplete]);
 
   const handleNext = async () => {
+    setIsTransitioning(true);
+    
+    // Small delay for transition effect
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     if (currentStepIndex < ONBOARDING_STEPS.length - 1) {
       setCurrentStepIndex(prev => prev + 1);
       setIsStepComplete(false);
@@ -76,19 +83,38 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       
       onComplete();
     }
+    
+    setIsTransitioning(false);
   };
 
   const handlePrevious = () => {
     if (currentStepIndex > 0) {
-      setCurrentStepIndex(prev => prev - 1);
-      setIsStepComplete(completedSteps.includes(ONBOARDING_STEPS[currentStepIndex - 1].id));
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentStepIndex(prev => prev - 1);
+        setIsStepComplete(completedSteps.includes(ONBOARDING_STEPS[currentStepIndex - 1].id));
+        setIsTransitioning(false);
+      }, 300);
     }
   };
 
   const renderStepContent = () => {
     switch (currentStep.id) {
       case 'profile':
-        return <OnboardingProfile onComplete={() => handleStepComplete('profile')} />;
+        return <OnboardingProfile 
+          onComplete={() => handleStepComplete('profile')} 
+          onSkip={async () => {
+            // Allow skipping profile step and mark as complete
+            // Set default goals when skipping profile
+            try {
+              const { setMacroGoals } = await import('@/lib/storage');
+              await setMacroGoals({ calories: 2000, protein: 150, carbs: 200, fat: 70 });
+            } catch (error) {
+              console.error('Error setting default goals:', error);
+            }
+            handleStepComplete('profile');
+          }}
+        />;
       case 'macros':
         return <OnboardingMacros onComplete={() => handleStepComplete('macros')} />;
       case 'walkthrough':
@@ -99,73 +125,136 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   return (
-    <div className="min-h-screen p-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-4xl mx-auto">
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-display font-black text-primary">Welcome to Macro Tracker!</h1>
-            <div className="text-sm text-secondary font-medium">
-              Step {currentStepIndex + 1} of {ONBOARDING_STEPS.length}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-800">
+      <div className="min-h-screen flex flex-col p-4 md:p-6 safe-area-inset">
+        <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col pt-2 md:pt-0">
+          
+          {/* Header */}
+          <div className="text-center mb-4 md:mb-8 animate-fade-in">
+            <div className="inline-flex items-center gap-3 glass-card-compact mb-3 md:mb-4 text-xs md:text-sm">
+              <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+              <span className="text-gray-700 font-semibold">Welcome to MyMacros</span>
+            </div>
+            
+            <h1 className="text-2xl md:text-4xl font-black text-white mb-2 md:mb-3">
+              Let&apos;s Get Started!
+            </h1>
+            <p className="text-gray-300 text-base md:text-lg max-w-2xl mx-auto leading-relaxed px-4">
+              In just 3 quick steps, we&apos;ll personalize your macro tracking experience
+            </p>
+          </div>
+
+          {/* Progress Section */}
+          <div className="mb-4 md:mb-8 animate-slide-up">
+            <div className="flex items-center justify-center mb-4 md:mb-6">
+              <div className="flex items-center gap-2 md:gap-4">
+                {ONBOARDING_STEPS.map((step, index) => (
+                  <div key={step.id} className="flex items-center">
+                    {/* Step Circle */}
+                    <div className="relative">
+                      <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-3 transition-all duration-500 flex items-center justify-center relative overflow-hidden ${
+                        index < currentStepIndex || completedSteps.includes(step.id)
+                          ? 'bg-gradient-to-r from-emerald-500 to-green-500 border-emerald-400 shadow-lg shadow-emerald-500/30'
+                          : index === currentStepIndex
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 border-blue-400 shadow-lg shadow-blue-500/30 animate-pulse'
+                          : 'bg-gray-700/50 border-gray-600/50 backdrop-blur-sm'
+                      }`}>
+                        {index < currentStepIndex || completedSteps.includes(step.id) ? (
+                          <Check className="w-5 h-5 md:w-7 md:h-7 text-white" />
+                        ) : (
+                          <step.icon className="w-5 h-5 md:w-7 md:h-7 text-white" />
+                        )}
+                        
+                        {/* Animated ring for current step */}
+                        {index === currentStepIndex && !completedSteps.includes(step.id) && (
+                          <div className="absolute inset-0 rounded-full border-2 border-blue-400/50 animate-ping" />
+                        )}
+                      </div>
+                      
+                      {/* Step label */}
+                      <div className="absolute -bottom-10 md:-bottom-12 left-1/2 transform -translate-x-1/2 text-center">
+                        <div className="text-gray-300 font-semibold text-xs md:text-sm whitespace-nowrap">
+                          {step.title.split(' ').slice(0, 2).join(' ')}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Connector */}
+                    {index < ONBOARDING_STEPS.length - 1 && (
+                      <div className={`w-8 md:w-16 h-1 mx-2 md:mx-4 rounded-full transition-all duration-500 ${
+                        index < currentStepIndex ? 'bg-gradient-to-r from-emerald-500 to-green-500' : 'bg-gray-600/50'
+                      }`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+
+          </div>
+
+          {/* Main Content */}
+          <div className={`flex-1 transition-all duration-500 ${isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'}`}>
+            <div className="glass-card-strong max-w-3xl mx-auto animate-slide-up">
+              {/* Current step header */}
+              <div className="text-center mb-4 md:mb-6">
+                <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <currentStep.icon className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                </div>
+                <h2 className="text-xl md:text-3xl font-black text-gray-800 mb-2 md:mb-3">
+                  {currentStep.title}
+                </h2>
+                <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-md mx-auto px-4">
+                  {currentStep.description}
+                </p>
+              </div>
+
+              {/* Step content */}
+              <div className="min-h-[300px] md:min-h-[400px]">
+                {renderStepContent()}
+              </div>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            {ONBOARDING_STEPS.map((step, index) => (
-              <div key={step.id} className="flex items-center flex-1">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 ${
-                  index < currentStepIndex || completedSteps.includes(step.id)
-                    ? 'bg-blue-500 border-blue-500 text-white shadow-lg'
-                    : index === currentStepIndex
-                    ? 'border-blue-500 text-blue-600 bg-white shadow-md'
-                    : 'border-gray-300 text-gray-400 bg-white'
-                }`}>
-                  {index < currentStepIndex || completedSteps.includes(step.id) ? (
-                    <Check className="w-5 h-5" />
-                  ) : (
-                    <span className="text-sm font-bold">{index + 1}</span>
-                  )}
-                </div>
-                
-                {index < ONBOARDING_STEPS.length - 1 && (
-                  <div className={`flex-1 h-1 mx-4 rounded-full transition-all duration-300 ${
-                    index < currentStepIndex ? 'bg-blue-500' : 'bg-gray-200'
-                  }`} />
-                )}
-              </div>
-            ))}
+
+          {/* Navigation */}
+          <div className="flex justify-between items-center mt-6 md:mt-8 max-w-3xl mx-auto w-full px-2">
+            <button
+              onClick={handlePrevious}
+              disabled={currentStepIndex === 0}
+              className="btn-pill-secondary disabled:opacity-30 disabled:cursor-not-allowed text-sm md:text-base px-4 py-2 md:px-6 md:py-3"
+            >
+              <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+              Previous
+            </button>
+
+            {/* Skip button for faster progression */}
+            {currentStep.id === 'walkthrough' && (
+              <button
+                onClick={onComplete}
+                className="btn-pill-secondary text-sm md:text-base px-4 py-2 md:px-6 md:py-3"
+              >
+                Skip Tutorial
+              </button>
+            )}
+
+            <button
+              onClick={handleNext}
+              disabled={!isStepComplete}
+              className="btn-pill-primary disabled:opacity-30 disabled:cursor-not-allowed text-sm md:text-base px-6 py-2 md:px-8 md:py-3"
+            >
+              {currentStepIndex === ONBOARDING_STEPS.length - 1 ? (
+                <>
+                  <span>Start Tracking</span>
+                  <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
+                </>
+              ) : (
+                <>
+                  <span>Continue</span>
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+                </>
+              )}
+            </button>
           </div>
-        </div>
-
-        {/* Step Content */}
-        <div className="glass-card-strong mb-8 animate-slide-up">
-          <div className="text-center mb-8">
-            <h2 className="text-hero font-black text-primary mb-3">{currentStep.title}</h2>
-            <p className="text-secondary text-lg">{currentStep.description}</p>
-          </div>
-
-          {renderStepContent()}
-        </div>
-
-        {/* Navigation */}
-        <div className="flex justify-between items-center px-4">
-          <button
-            onClick={handlePrevious}
-            disabled={currentStepIndex === 0}
-            className="btn-pill-secondary disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm px-3 py-2"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
-          </button>
-
-          <button
-            onClick={handleNext}
-            disabled={!isStepComplete}
-            className="btn-pill-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm px-3 py-2"
-          >
-            {currentStepIndex === ONBOARDING_STEPS.length - 1 ? 'Get Started' : 'Next'}
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </div>

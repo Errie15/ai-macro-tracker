@@ -211,10 +211,11 @@ export default function SettingsMenu({
 
       {/* Help Tutorial Modal */}
       {showOnboarding && (
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 overflow-y-auto">
-          <div className="glass-card-strong m-4 p-6 rounded-3xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-primary">Help & Tutorial</h2>
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: isDarkMode ? undefined : '#f0EEEC' }}>
+          <div className={`min-h-full w-full ${isDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : ''}`}>
+          <div className="glass-card-strong m-4 p-6 rounded-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-primary">Help & FAQ</h2>
               <button
                 onClick={() => setShowOnboarding(false)}
                 className="btn-pill-secondary w-10 h-10 p-0"
@@ -222,7 +223,129 @@ export default function SettingsMenu({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-secondary">Tutorial content will be available here.</p>
+            
+            <div className="space-y-6">
+              {/* Getting Started Section */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-primary border-b border-white/20 pb-2">Getting Started</h3>
+                
+                <div className="space-y-4">
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">🎯 How do I set my macro goals?</h4>
+                    <p className="text-secondary text-sm">
+                      Go to Settings and adjust your Macro Goals. You can either let our AI calculate them based on your profile, or set them manually. Your daily targets for protein, carbs, fat, and calories will be saved automatically.
+                    </p>
+                  </div>
+                  
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">🍽️ How do I log my meals?</h4>
+                    <p className="text-secondary text-sm">
+                      Tap the + button and describe your meal in plain English. Our AI will automatically calculate the macros for you. For example: &quot;grilled chicken breast with rice and broccoli&quot; or &quot;protein shake with banana&quot;.
+                    </p>
+                  </div>
+                  
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">🎤 Can I use voice input?</h4>
+                    <p className="text-secondary text-sm">
+                      Yes! Click the microphone icon in the meal input field and speak your meal description. Make sure to allow microphone access when prompted by your browser.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tracking & Analysis Section */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-primary border-b border-white/20 pb-2">Tracking & Analysis</h3>
+                
+                <div className="space-y-4">
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">🤖 How accurate is the AI analysis?</h4>
+                    <p className="text-secondary text-sm">
+                      Our AI uses Google Gemini and the USDA food database to provide accurate macro calculations. It&apos;s trained on extensive nutritional data, but remember that actual values can vary based on preparation methods and portion sizes.
+                    </p>
+                  </div>
+                  
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">📊 What do the progress circles mean?</h4>
+                    <p className="text-secondary text-sm">
+                      The colored circles show your daily progress: Blue for protein, green for carbs, purple for fat, and orange for calories. The percentage shows how much of your daily goal you&apos;ve reached.
+                    </p>
+                  </div>
+                  
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">📅 Can I view past days?</h4>
+                    <p className="text-secondary text-sm">
+                      Yes! Use the Calendar tab to view your nutrition history and see how you&apos;ve been tracking over time. You can also add meals to previous dates.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Issues Section */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-primary border-b border-white/20 pb-2">Common Issues</h3>
+                
+                <div className="space-y-4">
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">❌ The AI can&apos;t analyze my meal</h4>
+                    <p className="text-secondary text-sm">
+                                              Try being more specific with your description. Instead of &quot;lunch&quot;, try &quot;turkey sandwich with lettuce and tomato&quot;. If the AI still struggles, you can use the USDA food search for precise nutritional data.
+                    </p>
+                  </div>
+                  
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">🔄 My data isn&apos;t syncing</h4>
+                    <p className="text-secondary text-sm">
+                      Make sure you&apos;re signed in to your account. Data is automatically saved to the cloud when you&apos;re authenticated. If you&apos;re using guest mode, data is stored locally on your device.
+                    </p>
+                  </div>
+                  
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">🎨 How do I change the theme?</h4>
+                    <p className="text-secondary text-sm">
+                      In Settings, use the theme toggle switch to switch between dark and light modes. Your preference will be saved automatically.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tips & Tricks Section */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-primary border-b border-white/20 pb-2">Tips & Tricks</h3>
+                
+                <div className="space-y-4">
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">💡 Getting better AI results</h4>
+                    <p className="text-secondary text-sm">
+                      Include cooking methods, portion sizes, and specific ingredients. &quot;200g grilled salmon with steamed vegetables&quot; is better than just &quot;fish and veggies&quot;.
+                    </p>
+                  </div>
+                  
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">⚡ Quick meal logging</h4>
+                    <p className="text-secondary text-sm">
+                      Save time by describing multiple items at once: &quot;Greek yogurt with berries, coffee with milk, and a protein bar&quot; will be analyzed as separate items.
+                    </p>
+                  </div>
+                  
+                  <div className="glass-card-compact">
+                    <h4 className="font-semibold text-primary mb-2">📱 Install as an app</h4>
+                    <p className="text-secondary text-sm">
+                      For the best experience, install this as a web app on your phone. Look for the &quot;Add to Home Screen&quot; option in your browser menu.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Section */}
+              <div className="glass-card-compact">
+                <h3 className="text-lg font-semibold text-primary mb-2">Still need help?</h3>
+                <p className="text-secondary text-sm">
+                  Can&apos;t find what you&apos;re looking for? Our AI-powered macro tracking is designed to be intuitive, but we&apos;re always here to help you succeed on your nutrition journey.
+                </p>
+              </div>
+            </div>
+          </div>
           </div>
         </div>
       )}

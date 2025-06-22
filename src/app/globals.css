@@ -47,6 +47,14 @@ html:not(.dark) body {
 }
 
 @layer components {
+  /* Safe area utility classes */
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
   /* Glassmorphism Cards */
   .glass-card {
     backdrop-filter: blur(16px);
@@ -104,19 +112,29 @@ html:not(.dark) body {
     background: linear-gradient(to right, #0ea5e9, #d946ef);
     color: white;
     font-weight: 700;
-    padding: 1rem 2rem;
+    padding: 0.875rem 1.5rem;
     border-radius: 9999px;
     transition: all 0.3s ease;
     transform: scale(1);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    font-size: 1.125rem;
-    min-height: 56px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 1rem;
+    min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
     border: none;
     outline: none;
+    cursor: pointer;
+  }
+
+  @media (min-width: 768px) {
+    .btn-pill-primary {
+      padding: 1rem 2rem;
+      font-size: 1.125rem;
+      min-height: 56px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
   }
 
   .btn-pill-primary:hover {
@@ -150,19 +168,29 @@ html:not(.dark) body {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
     font-weight: 600;
-    padding: 1rem 2rem;
+    padding: 0.75rem 1.25rem;
     border-radius: 9999px;
     transition: all 0.3s ease;
     transform: scale(1);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    font-size: 1.125rem;
-    min-height: 56px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-size: 0.875rem;
+    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
     outline: none;
+    cursor: pointer;
+  }
+
+  @media (min-width: 768px) {
+    .btn-pill-secondary {
+      padding: 1rem 2rem;
+      font-size: 1.125rem;
+      min-height: 56px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
   }
 
   .btn-pill-secondary:hover {
