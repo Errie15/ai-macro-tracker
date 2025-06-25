@@ -52,7 +52,7 @@ export default function InstallPrompt() {
       <div className="fixed bottom-20 left-4 right-4 bg-green-600 text-white p-4 rounded-lg shadow-lg z-50">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold">Installera appen</h3>
+            <h3 className="font-semibold">Install App</h3>
             <p className="text-sm opacity-90">Få snabbare åtkomst från hemskärmen</p>
           </div>
           <div className="flex gap-2">
@@ -66,7 +66,7 @@ export default function InstallPrompt() {
               onClick={handleInstallClick}
               className="px-3 py-1 text-sm bg-white text-green-600 rounded font-semibold"
             >
-              Installera
+              Install
             </button>
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function InstallPrompt() {
       <div className="fixed bottom-20 left-4 right-4 bg-green-600 text-white p-4 rounded-lg shadow-lg z-50">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="font-semibold mb-2">Installera appen på iPhone</h3>
+            <h3 className="font-semibold mb-2">Install App on iPhone</h3>
             <ol className="text-sm space-y-1 opacity-90">
               <li>1. Tryck på dela-knappen (⬆️) i Safari</li>
               <li>2. Scrolla ner och välj &quot;Lägg till på hemskärm&quot;</li>

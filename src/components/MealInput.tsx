@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Loader2, Mic, MessageCircle, RotateCcw } from 'lucide-react';
+import { Plus, Loader2, Mic, MessageCircle, RotateCcw, AudioWaveform } from 'lucide-react';
 import { analyzeEnhancedMeal } from '@/lib/enhanced-gemini';
 import { addMeal } from '@/lib/storage';
 import { MealEntry } from '@/types';
@@ -66,24 +66,31 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
 
   const startVoiceInput = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Röstigenkänning stöds inte i denna webbläsare. Prova Chrome eller Edge.');
+      alert('Speech recognition is not supported in this browser. Please try Chrome or Edge.');
       return;
     }
 
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     
     if (!SpeechRecognition) {
-      alert('Röstigenkänning stöds inte i denna webbläsare. Prova Chrome eller Edge.');
+      alert('Speech recognition is not supported in this browser. Please try Chrome or Edge.');
       return;
     }
     
     const recognition = new SpeechRecognition();
     
-    // Enhanced settings for better Swedish recognition
-    recognition.lang = 'sv-SE';
+    // Enhanced settings for better English recognition
+    recognition.lang = 'en-US';
     recognition.continuous = false;
     recognition.interimResults = false;
-    // Note: maxAlternatives not supported in all browsers
+    recognition.maxAlternatives = 1;
+    
+    // Try to set additional properties for better recognition (if supported)
+    try {
+      (recognition as any).serviceURI = undefined; // Use default service
+    } catch (e) {
+      // Property not supported, continue
+    }
     
     // Add timeout to prevent hanging
     const timeoutId = setTimeout(() => {
@@ -93,7 +100,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     }, 10000);
 
     recognition.onstart = () => {
-      console.log('🎤 Voice recognition started');
+      console.log('🎤 Voice recognition started (English - en-US)');
       setIsListening(true);
     };
 
@@ -117,15 +124,15 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
         });
       }
       
-      // Only use results with decent confidence
-      if (confidence > 0.3) {
-        const currentText = mealText.trim();
-        const newText = currentText ? `${currentText} ${transcript}` : transcript;
-        setMealText(newText);
-        console.log('🎤 Added to meal text:', transcript);
-      } else {
-        console.warn('🎤 Low confidence result, not adding to text');
-        alert(`Osäker röstigenkänning (${(confidence * 100).toFixed(1)}% säker): "${transcript}". Försök igen eller skriv manuellt.`);
+      // Always use the result regardless of confidence (Web Speech API confidence is unreliable)
+      const currentText = mealText.trim();
+      const newText = currentText ? `${currentText} ${transcript}` : transcript;
+      setMealText(newText);
+      console.log(`🎤 Added to meal text: "${transcript}" (confidence: ${(confidence * 100).toFixed(1)}%)`);
+      
+      // Log confidence for debugging but don't block the result
+      if (confidence < 0.5) {
+        console.log('🎤 Note: Low confidence from Web Speech API, but still using result');
       }
     };
 
@@ -134,25 +141,25 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       console.error('🎤 Voice recognition error:', event.error);
       setIsListening(false);
       
-      let errorMessage = 'Fel vid röstigenkänning. ';
+      let errorMessage = 'Speech recognition error. ';
       switch (event.error) {
         case 'no-speech':
-          errorMessage += 'Inget tal upptäckt. Försök igen.';
+          errorMessage += 'No speech detected. Please try again.';
           break;
         case 'audio-capture':
-          errorMessage += 'Mikrofonproblem. Kontrollera att mikrofonen fungerar.';
+          errorMessage += 'Microphone problem. Please check your microphone.';
           break;
         case 'not-allowed':
-          errorMessage += 'Mikrofontillgång nekad. Tillåt mikrofon i webbläsaren.';
+          errorMessage += 'Microphone access denied. Please allow microphone in your browser.';
           break;
         case 'network':
-          errorMessage += 'Nätverksfel. Kontrollera internetanslutningen.';
+          errorMessage += 'Network error. Please check your internet connection.';
           break;
         case 'service-not-allowed':
-          errorMessage += 'Röstigenkänningstjänsten är inte tillgänglig.';
+          errorMessage += 'Speech recognition service is not available.';
           break;
         default:
-          errorMessage += `Okänt fel: ${event.error}`;
+          errorMessage += `Unknown error: ${event.error}`;
       }
       alert(errorMessage);
     };
@@ -166,12 +173,12 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     // Request microphone permission first
     navigator.mediaDevices?.getUserMedia({ audio: true })
       .then(() => {
-        console.log('🎤 Starting voice recognition with enhanced settings');
+        console.log('🎤 Starting voice recognition with enhanced English settings');
         recognition.start();
       })
       .catch((error) => {
         console.error('🎤 Microphone permission denied:', error);
-        alert('Mikrofonåtkomst krävs för röstigenkänning. Tillåt mikrofon i webbläsaren och försök igen.');
+        alert('Microphone access is required for speech recognition. Please allow microphone access in your browser and try again.');
       });
   };
 

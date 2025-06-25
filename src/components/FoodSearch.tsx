@@ -51,7 +51,7 @@ export default function FoodSearch({ onFoodAdded, onClose }: FoodSearchProps) {
       const fullFood = await getFoodDetails(food.fdcId);
       setSelectedFood(fullFood);
     } catch (error) {
-      console.error('Fel vid hämtning av matdetaljer:', error);
+      console.error('Error fetching food details:', error);
       alert('Kunde inte hämta matinformation');
     }
     setIsLoadingDetails(false);
@@ -152,7 +152,7 @@ export default function FoodSearch({ onFoodAdded, onClose }: FoodSearchProps) {
           </div>
         )}
 
-        {/* Matdetaljer och portionsinställning */}
+        {/* Food details and portion settings */}
         {selectedFood && (
           <div className="space-y-6">
             <div className="p-4 bg-white/10 rounded-xl border border-white/20">

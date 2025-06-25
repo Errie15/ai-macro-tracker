@@ -1,4 +1,4 @@
-// Typdefinitioner för Web Speech API
+// Type definitions for Web Speech API
 interface SpeechRecognitionEvent {
   results: SpeechRecognitionResultList;
 }
@@ -11,6 +11,7 @@ interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
+  maxAlternatives?: number;
   onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
   onend: ((this: SpeechRecognition, ev: Event) => any) | null;
   onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
