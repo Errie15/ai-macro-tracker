@@ -28,15 +28,23 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     
     try {
       console.log('Starting enhanced AI analysis...');
-      const macros = await analyzeEnhancedMeal(mealText.trim());
-      console.log('Enhanced AI analysis complete, received macros:', macros);
+      const analysisResult = await analyzeEnhancedMeal(mealText.trim());
+      console.log('Enhanced AI analysis complete, received result:', analysisResult);
       
       const newMeal: MealEntry = {
         id: '', // Will be set by Firebase when saved
         timestamp: new Date().toISOString(),
         date: new Date().toISOString().split('T')[0],
         originalText: mealText.trim(),
-        macros,
+        macros: {
+          protein: analysisResult.protein,
+          carbs: analysisResult.carbs,
+          fat: analysisResult.fat,
+          calories: analysisResult.calories,
+        },
+        breakdown: analysisResult.breakdown,
+        reasoning: analysisResult.reasoning,
+        validation: analysisResult.validation,
       };
 
       console.log('Saving meal to database...');
@@ -58,42 +66,113 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
 
   const startVoiceInput = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser');
+      alert('Röstigenkänning stöds inte i denna webbläsare. Prova Chrome eller Edge.');
       return;
     }
 
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     
     if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser');
+      alert('Röstigenkänning stöds inte i denna webbläsare. Prova Chrome eller Edge.');
       return;
     }
     
     const recognition = new SpeechRecognition();
     
+    // Enhanced settings for better Swedish recognition
     recognition.lang = 'sv-SE';
     recognition.continuous = false;
     recognition.interimResults = false;
+    // Note: maxAlternatives not supported in all browsers
+    
+    // Add timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      recognition.stop();
+      setIsListening(false);
+      console.log('🎤 Voice recognition timed out after 10 seconds');
+    }, 10000);
 
     recognition.onstart = () => {
+      console.log('🎤 Voice recognition started');
       setIsListening(true);
     };
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setMealText(prev => prev + (prev ? ' ' : '') + transcript);
+      clearTimeout(timeoutId);
+      console.log('🎤 Voice recognition results received:', event.results);
+      
+      // Get the best result
+      const results = Array.from(event.results[0]);
+      const bestResult = results[0];
+      const transcript = bestResult.transcript;
+      const confidence = bestResult.confidence;
+      
+      console.log(`🎤 Best result: "${transcript}" (confidence: ${(confidence * 100).toFixed(1)}%)`);
+      
+      // Show all alternatives in console for debugging
+      if (results.length > 1) {
+        console.log('🎤 Alternative results:');
+        results.slice(1).forEach((result, index) => {
+          console.log(`   ${index + 2}. "${result.transcript}" (confidence: ${(result.confidence * 100).toFixed(1)}%)`);
+        });
+      }
+      
+      // Only use results with decent confidence
+      if (confidence > 0.3) {
+        const currentText = mealText.trim();
+        const newText = currentText ? `${currentText} ${transcript}` : transcript;
+        setMealText(newText);
+        console.log('🎤 Added to meal text:', transcript);
+      } else {
+        console.warn('🎤 Low confidence result, not adding to text');
+        alert(`Osäker röstigenkänning (${(confidence * 100).toFixed(1)}% säker): "${transcript}". Försök igen eller skriv manuellt.`);
+      }
     };
 
     recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
+      clearTimeout(timeoutId);
+      console.error('🎤 Voice recognition error:', event.error);
       setIsListening(false);
+      
+      let errorMessage = 'Fel vid röstigenkänning. ';
+      switch (event.error) {
+        case 'no-speech':
+          errorMessage += 'Inget tal upptäckt. Försök igen.';
+          break;
+        case 'audio-capture':
+          errorMessage += 'Mikrofonproblem. Kontrollera att mikrofonen fungerar.';
+          break;
+        case 'not-allowed':
+          errorMessage += 'Mikrofontillgång nekad. Tillåt mikrofon i webbläsaren.';
+          break;
+        case 'network':
+          errorMessage += 'Nätverksfel. Kontrollera internetanslutningen.';
+          break;
+        case 'service-not-allowed':
+          errorMessage += 'Röstigenkänningstjänsten är inte tillgänglig.';
+          break;
+        default:
+          errorMessage += `Okänt fel: ${event.error}`;
+      }
+      alert(errorMessage);
     };
 
     recognition.onend = () => {
+      clearTimeout(timeoutId);
+      console.log('🎤 Voice recognition ended');
       setIsListening(false);
     };
 
-    recognition.start();
+    // Request microphone permission first
+    navigator.mediaDevices?.getUserMedia({ audio: true })
+      .then(() => {
+        console.log('🎤 Starting voice recognition with enhanced settings');
+        recognition.start();
+      })
+      .catch((error) => {
+        console.error('🎤 Microphone permission denied:', error);
+        alert('Mikrofonåtkomst krävs för röstigenkänning. Tillåt mikrofon i webbläsaren och försök igen.');
+      });
   };
 
   const clearInput = () => {

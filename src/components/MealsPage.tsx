@@ -7,11 +7,12 @@ import MealList from './MealList';
 interface MealsPageProps {
   meals: MealEntry[];
   onMealDeleted: () => void;
+  onMealUpdated?: () => void;
   onBack: () => void;
   onAddMeal: () => void;
 }
 
-export default function MealsPage({ meals, onMealDeleted, onBack, onAddMeal }: MealsPageProps) {
+export default function MealsPage({ meals, onMealDeleted, onMealUpdated, onBack, onAddMeal }: MealsPageProps) {
   const today = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -50,7 +51,7 @@ export default function MealsPage({ meals, onMealDeleted, onBack, onAddMeal }: M
           {/* Meals List */}
           <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
             {meals.length > 0 ? (
-              <MealList meals={meals} onMealDeleted={onMealDeleted} />
+              <MealList meals={meals} onMealDeleted={onMealDeleted} onMealUpdated={onMealUpdated} />
             ) : (
               <div className="glass-card text-center py-12 space-y-4">
                 <div className="w-16 h-16 mx-auto bg-white/10 rounded-full flex items-center justify-center">

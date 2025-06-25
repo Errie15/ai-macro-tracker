@@ -1,5 +1,6 @@
 import { AIResponse, MacroNutrients } from '@/types';
 import { analyzeMeal } from './gemini';
+import { getAllMeals } from './storage';
 
 interface FoodItem {
   name: string;
@@ -9,61 +10,51 @@ interface FoodItem {
 }
 
 /**
- * Enhanced meal analysis that uses USDA data when possible
+ * Enhanced meal analysis that checks for previously saved meals first, then uses AI
  */
 export async function analyzeEnhancedMeal(mealDescription: string): Promise<AIResponse> {
   try {
     console.log('🔍 Starting enhanced meal analysis for:', mealDescription);
 
-    // First try to extract individual foods from description
+    // First, check if we have analyzed this exact meal before
+    const previousMeal = await findPreviousMeal(mealDescription);
+    if (previousMeal) {
+      console.log('🎯 Found previous analysis for this meal, using saved values for consistency');
+      console.log(`📋 Previous meal: "${previousMeal.originalText}"`);
+      console.log(`🔄 Reusing values: P:${previousMeal.macros.protein}g C:${previousMeal.macros.carbs}g F:${previousMeal.macros.fat}g Kcal:${previousMeal.macros.calories}`);
+      return {
+        protein: previousMeal.macros.protein,
+        carbs: previousMeal.macros.carbs,
+        fat: previousMeal.macros.fat,
+        calories: previousMeal.macros.calories,
+        breakdown: previousMeal.breakdown || [],
+        reasoning: previousMeal.reasoning || 'Using previously saved analysis for consistency',
+        validation: previousMeal.validation || 'Values from previous analysis',
+        confidence: 0.95, // High confidence for previously saved data
+      };
+    }
+
+    // If no previous meal found, extract foods for logging (USDA search disabled)
     const extractedFoods = await extractFoodsFromDescription(mealDescription);
     console.log('🔍 Original description:', mealDescription);
     console.log('🥘 Extracted foods:', extractedFoods);
 
-    let totalMacros: MacroNutrients = {
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      calories: 0,
-    };
-
-    let foundUSDAData = false;
-
-    // Try to find nutrition data for each food
+    // USDA search is completely disabled - skip to AI analysis
     for (const food of extractedFoods) {
-      try {
-        console.log(`🔎 Searching USDA data for: ${food.name} (${food.grams}g)`);
-        
-        // Skip USDA for now, use AI fallback
-        // const usdaResult: { macros: MacroNutrients } | null = null;
-        
-        // Since USDA is disabled, we skip this entire block
-        console.log(`❌ No USDA data found for: ${food.name} (USDA disabled)`);
-      } catch (error) {
-        console.error(`Error searching USDA for ${food.name}:`, error);
-      }
+      console.log(`🔎 Searching USDA data for: ${food.name} (${food.grams}g)`);
+      console.log(`❌ No USDA data found for: ${food.name} (USDA disabled)`);
     }
 
-    // If we found any USDA data, use it
-    if (foundUSDAData) {
-      console.log('🎯 Using USDA-based data:', totalMacros);
-      
-      return {
-        protein: Math.round(totalMacros.protein),
-        carbs: Math.round(totalMacros.carbs),
-        fat: Math.round(totalMacros.fat),
-        calories: Math.round(totalMacros.calories),
-        confidence: 0.9, // High precision with USDA data
-      };
-    }
-
-    // Otherwise fall back to AI estimation
+    // Use AI estimation directly
     console.log('🤖 Falling back to AI estimation');
     const aiResult = await analyzeMeal(mealDescription);
     
     return {
       ...aiResult,
-      confidence: 0.6, // Lower precision for AI estimation
+      confidence: aiResult.confidence || 0.6, // Lower precision for AI estimation
+      breakdown: aiResult.breakdown,
+      reasoning: aiResult.reasoning,
+      validation: aiResult.validation,
     };
 
   } catch (error) {
@@ -72,6 +63,76 @@ export async function analyzeEnhancedMeal(mealDescription: string): Promise<AIRe
     // Last resort: use standard AI
     return await analyzeMeal(mealDescription);
   }
+}
+
+/**
+ * Find a previously analyzed meal with similar description
+ */
+async function findPreviousMeal(description: string) {
+  try {
+    const allMeals = await getAllMeals();
+    
+    // Normalize the description for comparison
+    const normalizedDescription = normalizeDescription(description);
+    
+    // Look for exact or very similar matches
+    for (const meal of allMeals) {
+      const normalizedMealText = normalizeDescription(meal.originalText);
+      
+      // Check for exact match first
+      if (normalizedMealText === normalizedDescription) {
+        console.log(`🎯 Found exact match: "${meal.originalText}"`);
+        return meal;
+      }
+      
+      // Check for very similar match (85% similarity for high confidence)
+      const similarity = calculateSimilarity(normalizedDescription, normalizedMealText);
+      if (similarity > 0.85) {
+        console.log(`🎯 Found similar match (${(similarity * 100).toFixed(1)}%): "${meal.originalText}"`);
+        return meal;
+      }
+    }
+    
+    console.log('📭 No previous analysis found for this meal');
+    return null;
+  } catch (error) {
+    console.error('Error searching for previous meals:', error);
+    return null;
+  }
+}
+
+/**
+ * Normalize description for comparison
+ */
+function normalizeDescription(description: string): string {
+  return description
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s%]/g, '') // Remove punctuation but keep %
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .replace(/\b(a|an|the|with|and|of|one|1)\b/g, '') // Remove common words and numbers
+    .replace(/\bglass\b/g, 'glass') // Normalize container words
+    .replace(/\bcup\b/g, 'cup')
+    .replace(/\bmilk\b/g, 'milk')
+    .replace(/\bfat\b/g, 'fat')
+    .replace(/\s+/g, ' ') // Clean up extra spaces
+    .trim();
+}
+
+/**
+ * Calculate similarity between two strings
+ */
+function calculateSimilarity(str1: string, str2: string): number {
+  const words1 = str1.split(' ').filter(w => w.length > 2);
+  const words2 = str2.split(' ').filter(w => w.length > 2);
+  
+  if (words1.length === 0 && words2.length === 0) return 1;
+  if (words1.length === 0 || words2.length === 0) return 0;
+  
+  const commonWords = words1.filter(word => words2.includes(word));
+  const totalWords = Math.max(words1.length, words2.length);
+  
+  return commonWords.length / totalWords;
 }
 
 /**

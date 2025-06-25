@@ -47,25 +47,25 @@ function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: Mac
   return (
     <div className={`macro-block group relative overflow-hidden ${bgGradient}`}>
       {/* Background icon */}
-      <div className="absolute top-4 right-4 opacity-20 group-hover:opacity-30 transition-opacity duration-300">
-        <div className="w-8 h-8">
+      <div className="absolute top-3 right-3 opacity-20 group-hover:opacity-30 transition-opacity duration-300">
+        <div className="w-6 h-6">
           {icon}
         </div>
       </div>
       
       {/* Content */}
       <div className="relative z-10">
-        <div className="flex items-center gap-2 mb-3">
-          <div className={`w-6 h-6 ${color}`}>
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`w-5 h-5 ${color}`}>
             {icon}
           </div>
-          <h3 className="font-bold text-primary text-lg">{label}</h3>
+          <h3 className="font-bold text-primary text-base">{label}</h3>
         </div>
         
-        <div className="space-y-3">
+        <div className="space-y-2">
           {/* Values */}
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-black text-primary animate-count-up">
+            <span className="text-2xl font-black text-primary animate-count-up">
               {Math.round(displayValue)}
             </span>
             <span className="text-tertiary text-sm font-medium">{unit}</span>
@@ -75,32 +75,24 @@ function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: Mac
             </span>
           </div>
           
-          {/* Progress bar */}
-          <div className="space-y-2">
-            <div className="progress-container h-2">
-              <div 
-                className={`progress-fill-glass ${
-                  isOverGoal 
-                    ? 'bg-gradient-to-r from-warning-400 to-warning-500' 
-                    : `bg-gradient-to-r ${color.replace('text-', 'from-').replace('-400', '-400 to-').replace('text-', '').replace('-400', '-500')}`
-                }`}
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className={`text-xs font-medium ${
-                isOverGoal ? 'text-warning-300' : 'text-secondary'
-              }`}>
-                {Math.round(percentage)}%
-              </span>
-              {isOverGoal && (
-                <span className="text-xs text-warning-300 font-medium">
-                  +{Math.round(current - goal)}{unit} over
-                </span>
-              )}
-            </div>
+          {/* Progress bar only */}
+          <div className="progress-container h-1.5">
+            <div 
+              className={`progress-fill-glass ${
+                isOverGoal 
+                  ? 'bg-gradient-to-r from-warning-400 to-warning-500' 
+                  : `bg-gradient-to-r ${color.replace('text-', 'from-').replace('-400', '-400 to-').replace('text-', '').replace('-400', '-500')}`
+              }`}
+              style={{ width: `${percentage}%` }}
+            />
           </div>
+          
+          {/* Only show over-goal indicator */}
+          {isOverGoal && (
+            <div className="text-xs text-warning-300 font-medium text-right">
+              +{Math.round(current - goal)}{unit} över
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -148,9 +140,9 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
   ];
 
   return (
-    <div className="space-y-6 animate-slide-up">
-      {/* Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="animate-slide-up">
+      {/* Vertical Layout - Single Column */}
+      <div className="space-y-3">
         {macroBlocks.map((block, index) => (
           <div 
             key={block.label}
@@ -160,40 +152,6 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
             <MacroBlock {...block} />
           </div>
         ))}
-      </div>
-      
-      {/* Summary Card */}
-      <div className="glass-card text-center space-y-3 animate-slide-up" style={{ animationDelay: '400ms' }}>
-        <div className="flex items-center justify-center gap-2">
-          <Target className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-primary">Daily Summary</h3>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div className="space-y-1">
-            <div className="text-tertiary">Protein</div>
-            <div className="font-bold text-blue-400">
-              {Math.round((totalMacros.protein / goals.protein) * 100)}%
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-tertiary">Carbs</div>
-            <div className="font-bold text-green-400">
-              {Math.round((totalMacros.carbs / goals.carbs) * 100)}%
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-tertiary">Fat</div>
-            <div className="font-bold text-purple-400">
-              {Math.round((totalMacros.fat / goals.fat) * 100)}%
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-tertiary">Calories</div>
-            <div className="font-bold text-orange-400">
-              {Math.round((totalMacros.calories / goals.calories) * 100)}%
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

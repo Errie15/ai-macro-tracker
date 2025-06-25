@@ -250,6 +250,7 @@ export default function Home() {
           <MealsPage
             meals={todaysMeals}
             onMealDeleted={handleMealDeleted}
+            onMealUpdated={handleMealDeleted}
             onBack={() => setCurrentPage('home')}
             onAddMeal={openMealInput}
           />

@@ -59,14 +59,17 @@ export async function analyzeMeal(mealDescription: string): Promise<AIResponse> 
       throw new Error('Invalid data from API');
     }
 
-    const result = {
+    const result: AIResponse = {
       protein: Math.max(0, Math.round(macros.protein)),
       carbs: Math.max(0, Math.round(macros.carbs)),
       fat: Math.max(0, Math.round(macros.fat)),
       calories: Math.max(0, Math.round(macros.calories)),
+      breakdown: macros.breakdown || [],
+      reasoning: macros.reasoning || 'No reasoning provided',
+      validation: macros.validation || 'No validation provided',
     };
 
-    console.log('Returning processed result:', result);
+    console.log('Returning processed result with full analysis:', result);
     return result;
 
   } catch (error) {
@@ -95,6 +98,9 @@ export async function analyzeMeal(mealDescription: string): Promise<AIResponse> 
       carbs: 0,
       fat: 0,
       calories: 0,
+      breakdown: [],
+      reasoning: 'No reasoning provided',
+      validation: 'No validation provided',
     };
   }
 } 

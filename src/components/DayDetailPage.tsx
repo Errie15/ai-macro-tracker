@@ -265,10 +265,11 @@ export default function DayDetailPage({ date, onBack, onAddMeal }: DayDetailPage
             </div>
 
             {meals.length > 0 ? (
-                             <MealList 
-                 meals={meals} 
-                 onMealDeleted={handleDeleteMeal}
-               />
+                                           <MealList 
+                meals={meals} 
+                onMealDeleted={handleDeleteMeal}
+                onMealUpdated={handleDeleteMeal}
+              />
             ) : (
               <div className="text-center py-8 text-tertiary">
                 <div className="text-6xl mb-3">🍽️</div>

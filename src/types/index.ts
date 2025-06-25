@@ -12,12 +12,31 @@ export interface MacroNutrients {
   calories: number;
 }
 
+export interface FoodBreakdown {
+  food: string;
+  estimatedAmount: string;
+  protein: number;
+  carbs: number;
+  fat: number;
+  calories: number;
+}
+
+export interface AIResponse extends MacroNutrients {
+  confidence?: number;
+  breakdown?: FoodBreakdown[];
+  reasoning?: string;
+  validation?: string;
+}
+
 export interface MealEntry {
   id: string;
   timestamp: string;
   date: string; // YYYY-MM-DD format
   originalText: string;
   macros: MacroNutrients;
+  breakdown?: FoodBreakdown[];
+  reasoning?: string;
+  validation?: string;
 }
 
 export interface DailyProgress {
@@ -25,14 +44,6 @@ export interface DailyProgress {
   totalMacros: MacroNutrients;
   goals: MacroGoals;
   meals: MealEntry[];
-}
-
-export interface AIResponse {
-  protein: number;
-  carbs: number;
-  fat: number;
-  calories: number;
-  confidence?: number;
 }
 
 // Onboarding types

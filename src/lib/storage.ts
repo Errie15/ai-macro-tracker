@@ -8,7 +8,8 @@ import {
   query,
   orderByChild,
   equalTo,
-  orderByKey
+  orderByKey,
+  update
 } from 'firebase/database';
 import { db } from './firebase';
 import { getAuth } from 'firebase/auth';
@@ -134,16 +135,32 @@ export async function getMealsByDate(date: string): Promise<MealEntry[]> {
     
     if (snapshot.exists()) {
       const mealsData = snapshot.val();
+      console.log('📋 Raw meals data from database:', mealsData);
       
       // Convert object with keys to array and sort by timestamp
       // Use the Firebase-generated key as the meal ID
-      return Object.entries(mealsData)
-        .map(([key, value]: [string, any]) => ({
-          id: key, // Use Firebase key as ID for deletion
-          ...value
-        } as MealEntry))
+      const meals = Object.entries(mealsData)
+        .map(([key, value]: [string, any]) => {
+          const meal = {
+            id: key, // Use Firebase key as ID for deletion
+            ...value
+          } as MealEntry;
+          
+          console.log(`📝 Processed meal ${key}:`, {
+            hasBreakdown: !!(meal.breakdown && meal.breakdown.length > 0),
+            breakdownLength: meal.breakdown ? meal.breakdown.length : 0,
+            hasReasoning: !!meal.reasoning,
+            hasValidation: !!meal.validation
+          });
+          
+          return meal;
+        })
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+      console.log('✅ Final processed meals:', meals.length);
+      return meals;
     } else {
+      console.log('📭 No meals found for date:', date);
       return [];
     }
   } catch (error) {
@@ -163,14 +180,23 @@ export async function addMeal(meal: MealEntry): Promise<void> {
   try {
     const mealsRef = ref(db, `users/${user.uid}/meals`);
     // Don't include the id field when saving to Firebase - let Firebase generate the key
+    // Include all meal data including breakdown, reasoning, and validation
     const mealData = {
       originalText: meal.originalText,
       macros: meal.macros,
       date: meal.date,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      breakdown: meal.breakdown || null,
+      reasoning: meal.reasoning || null,
+      validation: meal.validation || null,
     };
+    
+    console.log('💾 Saving meal data to database:', mealData);
+    
     // Push creates a new child with auto-generated key
     await push(mealsRef, mealData);
+    
+    console.log('✅ Meal saved successfully with breakdown data');
   } catch (error) {
     console.error('Error adding meal to Realtime Database:', error);
     throw error;
@@ -190,6 +216,25 @@ export async function deleteMeal(mealId: string): Promise<void> {
     await remove(mealRef);
   } catch (error) {
     console.error('Error deleting meal from Realtime Database:', error);
+    throw error;
+  }
+}
+
+export async function updateMeal(mealId: string, updates: Partial<MealEntry>): Promise<void> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    console.warn('Cannot update meal: user not authenticated');
+    return;
+  }
+
+  try {
+    console.log('🔄 Updating meal in database:', { mealId, updates });
+    const mealRef = ref(db, `users/${user.uid}/meals/${mealId}`);
+    await update(mealRef, updates);
+    console.log('✅ Meal updated successfully in database');
+  } catch (error) {
+    console.error('Error updating meal in Realtime Database:', error);
     throw error;
   }
 }
