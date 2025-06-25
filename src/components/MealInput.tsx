@@ -5,6 +5,50 @@ import { Plus, Loader2, Mic, MessageCircle, RotateCcw, AudioWaveform } from 'luc
 import { analyzeEnhancedMeal } from '@/lib/enhanced-gemini';
 import { addMeal } from '@/lib/storage';
 import { MealEntry } from '@/types';
+import { AIAudioRecorder, transcribeAudio } from '@/lib/ai-speech';
+
+// Convert written numbers to digits
+const convertNumbersToDigits = (text: string): string => {
+  const numberWords: { [key: string]: string } = {
+    'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4', 
+    'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+    'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13', 
+    'fourteen': '14', 'fifteen': '15', 'sixteen': '16', 'seventeen': '17',
+    'eighteen': '18', 'nineteen': '19', 'twenty': '20', 'thirty': '30',
+    'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70',
+    'eighty': '80', 'ninety': '90', 'hundred': '100', 'thousand': '1000'
+  };
+
+  let result = text;
+  
+  // Handle compound numbers like "twenty five" -> "25"
+  result = result.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\s+(one|two|three|four|five|six|seven|eight|nine)\b/gi, (match, tens, ones) => {
+    const tensNum = numberWords[tens.toLowerCase()] || tens;
+    const onesNum = numberWords[ones.toLowerCase()] || ones;
+    return (parseInt(tensNum) + parseInt(onesNum)).toString();
+  });
+
+  // Handle "X hundred Y" -> "XY0" (e.g., "one hundred fifty" -> "150")
+  result = result.replace(/\b(one|two|three|four|five|six|seven|eight|nine)\s+hundred\s+(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)\b/gi, (match, hundreds, remainder) => {
+    const hundredsNum = parseInt(numberWords[hundreds.toLowerCase()] || hundreds) * 100;
+    const remainderNum = parseInt(numberWords[remainder.toLowerCase()] || remainder);
+    return (hundredsNum + remainderNum).toString();
+  });
+
+  // Handle simple "X hundred" -> "X00"
+  result = result.replace(/\b(one|two|three|four|five|six|seven|eight|nine)\s+hundred\b/gi, (match, num) => {
+    const numValue = numberWords[num.toLowerCase()] || num;
+    return (parseInt(numValue) * 100).toString();
+  });
+
+  // Replace individual number words
+  Object.keys(numberWords).forEach(word => {
+    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    result = result.replace(regex, numberWords[word]);
+  });
+
+  return result;
+};
 
 interface MealInputProps {
   onMealAdded: () => void | Promise<void>;
@@ -15,9 +59,12 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   const [mealText, setMealText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isAIRecording, setIsAIRecording] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'down' | 'left' | 'right' | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const aiRecorderRef = useRef<AIAudioRecorder | null>(null);
+  const aiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,10 +172,14 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       }
       
       // Always use the result regardless of confidence (Web Speech API confidence is unreliable)
+      // Convert number words to digits for consistency
+      const processedTranscript = convertNumbersToDigits(transcript);
+      console.log(`🎤 Original: "${transcript}" -> Processed: "${processedTranscript}"`);
+      
       const currentText = mealText.trim();
-      const newText = currentText ? `${currentText} ${transcript}` : transcript;
+      const newText = currentText ? `${currentText} ${processedTranscript}` : processedTranscript;
       setMealText(newText);
-      console.log(`🎤 Added to meal text: "${transcript}" (confidence: ${(confidence * 100).toFixed(1)}%)`);
+      console.log(`🎤 Added to meal text: "${processedTranscript}" (confidence: ${(confidence * 100).toFixed(1)}%)`);
       
       // Log confidence for debugging but don't block the result
       if (confidence < 0.5) {
@@ -180,6 +231,107 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
         console.error('🎤 Microphone permission denied:', error);
         alert('Microphone access is required for speech recognition. Please allow microphone access in your browser and try again.');
       });
+  };
+
+  const startAIVoiceInput = async () => {
+    try {
+      setIsAIRecording(true);
+      console.log('🎤 Starting AI-powered voice recording...');
+
+      // Create AI recorder instance
+      aiRecorderRef.current = new AIAudioRecorder();
+      
+      // Start recording with voice activity detection
+      await aiRecorderRef.current.startRecording({ 
+        maxDuration: 30 // High value, voice detection will stop before this
+      }, () => {
+        // Voice activity detection callback - stop when silence is detected
+        console.log('🎤 Voice activity detection triggered stop');
+        handleAIRecordingStop();
+      });
+
+      // Fallback timeout in case voice detection fails
+      aiTimeoutRef.current = setTimeout(async () => {
+        console.log('🎤 Fallback timeout triggered (5s max)');
+        await handleAIRecordingStop();
+      }, 5000); // 5 seconds max fallback
+
+    } catch (error) {
+      console.error('🎤 Failed to start AI recording:', error);
+      setIsAIRecording(false);
+      alert('Failed to start AI recording. Please check microphone permissions.');
+    }
+  };
+
+  const handleAIRecordingStop = async () => {
+    if (!aiRecorderRef.current) {
+      console.log('🎤 No recorder instance');
+      setIsAIRecording(false);
+      return;
+    }
+
+    // Don't check isAIRecording state - just try to stop if we have a recorder
+    // The state might be out of sync due to timing issues
+    console.log('🎤 Attempting to stop AI recording (ignoring state check)');
+    
+    try {
+      console.log('🎤 Stopping AI recording and starting transcription...');
+      console.log('🎤 Recorder state:', aiRecorderRef.current.isRecording() ? 'recording' : 'not recording');
+      
+      // Always try to stop, even if isRecording() returns false
+      // The MediaRecorder might still have data
+      let audioBlob;
+      try {
+        audioBlob = await aiRecorderRef.current.stopRecording();
+        console.log('🎤 Successfully stopped recording, got blob size:', audioBlob.size);
+      } catch (stopError) {
+        console.error('🎤 Error stopping recording:', stopError);
+        setIsAIRecording(false);
+        alert('Failed to stop recording. Please try again.');
+        return;
+      }
+      
+      // Transcribe using AI
+      const result = await transcribeAudio(audioBlob);
+      
+      console.log('🎤 AI Transcription result:', result);
+      
+      if (result.transcript && result.transcript.trim()) {
+        // Convert number words to digits
+        const processedTranscript = convertNumbersToDigits(result.transcript);
+        console.log('🎤 Processed transcript (numbers converted):', processedTranscript);
+        
+        const currentText = mealText.trim();
+        const newText = currentText ? `${currentText} ${processedTranscript}` : processedTranscript;
+        setMealText(newText);
+        console.log('🎤 AI transcription added to meal text:', processedTranscript);
+      } else {
+        alert('No speech detected. Please try again.');
+      }
+    } catch (error) {
+      console.error('🎤 AI transcription error:', error);
+      alert('AI transcription failed. Please try the regular microphone (red) or type manually.');
+    } finally {
+      setIsAIRecording(false);
+      
+      // Clean up timeout reference
+      if (aiTimeoutRef.current) {
+        clearTimeout(aiTimeoutRef.current);
+        aiTimeoutRef.current = null;
+      }
+    }
+  };
+
+  const stopAIVoiceInput = async () => {
+    console.log('🎤 Manual stop requested...');
+    
+    // Clear the auto-stop timeout since we're stopping manually
+    if (aiTimeoutRef.current) {
+      clearTimeout(aiTimeoutRef.current);
+      aiTimeoutRef.current = null;
+    }
+    
+    await handleAIRecordingStop();
   };
 
   const clearInput = () => {
@@ -266,14 +418,28 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               <button
                 type="button"
                 onClick={startVoiceInput}
-                disabled={isAnalyzing || isListening}
+                disabled={isAnalyzing || isListening || isAIRecording}
                 className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
                   isListening ? 'bg-red-500/20 border-red-400/30' : ''
                 }`}
-                title="Voice input"
+                title="Voice input (Web Speech API)"
               >
                 <Mic className={`w-5 h-5 ${
                   isListening ? 'text-red-400 animate-pulse' : ''
+                }`} />
+              </button>
+
+              <button
+                type="button"
+                onClick={isAIRecording ? stopAIVoiceInput : startAIVoiceInput}
+                disabled={isAnalyzing || isListening}
+                className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
+                  isAIRecording ? 'bg-blue-500/20 border-blue-400/30' : ''
+                }`}
+                title="AI Voice input (Google Gemini)"
+              >
+                <AudioWaveform className={`w-5 h-5 ${
+                  isAIRecording ? 'text-blue-400 animate-pulse' : ''
                 }`} />
               </button>
             </div>
@@ -323,9 +489,31 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-30" />
             </div>
             <div>
-                              <p className="font-bold text-lg">Listening...</p>
+              <p className="font-bold text-lg">Listening...</p>
               <p className="text-sm opacity-80">Speak now to describe your meal</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Recording Feedback */}
+      {isAIRecording && (
+        <div className="glass-card bg-blue-500/20 border-blue-400/30 animate-scale-in">
+          <div className="flex items-center justify-center gap-3 text-blue-300">
+            <div className="relative">
+              <AudioWaveform className="w-6 h-6" />
+              <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-30" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-lg">AI Recording...</p>
+              <p className="text-sm opacity-80">Powered by Google Gemini • Smart silence detection</p>
+            </div>
+            <button
+              onClick={stopAIVoiceInput}
+              className="btn-pill-secondary px-3 py-1 text-sm tap-effect"
+            >
+              Stop
+            </button>
           </div>
         </div>
       )}

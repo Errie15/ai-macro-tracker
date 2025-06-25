@@ -9,12 +9,15 @@ export interface SpeechResult {
   alternatives?: string[];
 }
 
+import { VoiceActivityDetector } from './voice-activity-detection';
+
 export class AIAudioRecorder {
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private stream: MediaStream | null = null;
+  private voiceDetector: VoiceActivityDetector | null = null;
 
-  async startRecording(options: AudioRecordingOptions = {}): Promise<void> {
+  async startRecording(options: AudioRecordingOptions = {}, onSilenceDetected?: () => void): Promise<void> {
     const { maxDuration = 10 } = options;
 
     try {
@@ -47,12 +50,16 @@ export class AIAudioRecorder {
       this.mediaRecorder.start();
       console.log('🎤 AI Audio Recording started');
 
-      // Auto-stop after maxDuration
-      setTimeout(() => {
-        if (this.mediaRecorder?.state === 'recording') {
-          this.stopRecording();
+      // Set up voice activity detection if callback provided
+      if (onSilenceDetected) {
+        try {
+          this.voiceDetector = new VoiceActivityDetector(30, 1500); // 30 volume threshold, 1.5s silence
+          await this.voiceDetector.start(this.stream, onSilenceDetected);
+          console.log('🎤 Voice activity detection enabled');
+        } catch (vadError) {
+          console.warn('🎤 Voice activity detection failed, using fallback timeout:', vadError);
         }
-      }, maxDuration * 1000);
+      }
 
     } catch (error) {
       console.error('🎤 Failed to start AI audio recording:', error);
@@ -67,6 +74,16 @@ export class AIAudioRecorder {
         return;
       }
 
+      // If already stopped, create blob from existing chunks
+      if (this.mediaRecorder.state === 'inactive') {
+        console.log('🎤 MediaRecorder already stopped, creating blob from existing chunks');
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        this.cleanup();
+        console.log('🎤 AI Audio Recording blob created, size:', audioBlob.size);
+        resolve(audioBlob);
+        return;
+      }
+
       this.mediaRecorder.onstop = () => {
         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
         this.cleanup();
@@ -74,11 +91,26 @@ export class AIAudioRecorder {
         resolve(audioBlob);
       };
 
-      this.mediaRecorder.stop();
+      // Add error handler
+      this.mediaRecorder.onerror = (event) => {
+        console.error('🎤 MediaRecorder error during stop:', event);
+        reject(new Error('MediaRecorder error during stop'));
+      };
+
+      try {
+        this.mediaRecorder.stop();
+      } catch (error) {
+        console.error('🎤 Error calling stop():', error);
+        reject(error);
+      }
     });
   }
 
   private cleanup(): void {
+    if (this.voiceDetector) {
+      this.voiceDetector.stop();
+      this.voiceDetector = null;
+    }
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
       this.stream = null;
