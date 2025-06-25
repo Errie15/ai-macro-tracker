@@ -60,8 +60,8 @@ export async function analyzeEnhancedMeal(mealDescription: string): Promise<AIRe
   } catch (error) {
     console.error('Error in enhanced meal analysis:', error);
     
-    // Last resort: use standard AI
-    return await analyzeMeal(mealDescription);
+    // Re-throw the error instead of falling back to standard AI to prevent zero-value meals
+    throw error;
   }
 }
 

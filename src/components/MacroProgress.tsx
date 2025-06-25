@@ -63,8 +63,8 @@ function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: Mac
         </div>
         
         <div className="space-y-2">
-          {/* Values */}
-          <div className="flex items-baseline gap-1">
+          {/* Values with inline overflow indicator */}
+          <div className="flex items-baseline gap-1 flex-wrap">
             <span className="text-2xl font-black text-primary animate-count-up">
               {Math.round(displayValue)}
             </span>
@@ -73,6 +73,12 @@ function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: Mac
             <span className="text-secondary text-sm font-medium">
               {goal}{unit}
             </span>
+            {/* Show over-goal indicator inline */}
+            {isOverGoal && (
+              <span className="text-xs text-warning-300 font-medium ml-1">
+                +{Math.round(current - goal)}{unit} over
+              </span>
+            )}
           </div>
           
           {/* Progress bar only */}
@@ -86,13 +92,6 @@ function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: Mac
               style={{ width: `${percentage}%` }}
             />
           </div>
-          
-          {/* Only show over-goal indicator */}
-          {isOverGoal && (
-            <div className="text-xs text-warning-300 font-medium text-right">
-              +{Math.round(current - goal)}{unit} över
-            </div>
-          )}
         </div>
       </div>
     </div>

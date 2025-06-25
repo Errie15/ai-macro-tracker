@@ -600,23 +600,16 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                     </>
                   ) : (
                     /* No breakdown data available */
-                    <div className="bg-gray-500/10 border border-gray-400/20 rounded-lg p-3">
+                    <div className="bg-blue-500/10 border border-blue-400/20 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-2">
-                        <Info className="w-3 h-3 text-gray-400" />
-                        <span className="text-xs font-medium text-gray-400">Information</span>
+                        <Info className="w-3 h-3 text-blue-400" />
+                        <span className="text-xs font-medium text-blue-400">AI Analysis Unavailable</span>
                       </div>
                       <p className="text-xs text-secondary leading-relaxed mb-3">
-                        This meal was analyzed with an earlier version of the AI that didn&apos;t save detailed breakdown information.
+                        The AI could not estimate the nutritional values for this meal. You can manually edit the macro values using the edit button above. Once saved, the AI will remember this meal for future use.
                       </p>
-                      <div className="text-xs text-tertiary">
-                        <strong>Macro Totals:</strong><br/>
-                        🔵 Protein: {meal.macros.protein}g<br/>
-                        🟢 Carbs: {meal.macros.carbs}g<br/>
-                        🟣 Fat: {meal.macros.fat}g<br/>
-                        🟠 Calories: {meal.macros.calories} kcal
-                      </div>
-                      <div className="mt-2 text-xs text-blue-400">
-                        💡 Tip: New meals will have detailed AI analysis
+                      <div className="text-xs text-blue-400">
+                        💡 Click the edit button ✏️ to add your own macro values
                       </div>
                 </div>
                   )}

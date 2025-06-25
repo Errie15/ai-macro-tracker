@@ -92,15 +92,7 @@ export async function analyzeMeal(mealDescription: string): Promise<AIResponse> 
       }
     }
     
-    // Return fallback values if AI doesn't work
-    return {
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      calories: 0,
-      breakdown: [],
-      reasoning: 'No reasoning provided',
-      validation: 'No validation provided',
-    };
+    // Throw error instead of returning fallback - prevent saving meals with zero values
+    throw error;
   }
 } 
