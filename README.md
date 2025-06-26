@@ -1,5 +1,7 @@
 # 🤖 Hälsocoach - AI Makro Tracker
 
+Om servern inte går att starta npm run dev, ta bort .next filen och kör " npm install " 
+
 Din personliga AI-assistent för hälsosam kost med modern glassmorphism-design och svenska språkstöd.
 
 ## ✨ Funktioner

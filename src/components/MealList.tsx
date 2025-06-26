@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2, Clock, Utensils, ChevronDown, ChevronRight, Brain, Info, Edit3, Save, X } from 'lucide-react';
+import { Trash2, Clock, Utensils, ChevronDown, ChevronRight, Brain, Info, Edit3, Save, X, RefreshCw } from 'lucide-react';
 import { MealEntry, MacroNutrients, FoodBreakdown } from '@/types';
 import { deleteMeal, updateMeal } from '@/lib/storage';
 
@@ -25,6 +25,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
   const [editingFoods, setEditingFoods] = useState<Set<string>>(new Set());
   const [editValues, setEditValues] = useState<{ [mealId: string]: MacroNutrients }>({});
   const [editFoodValues, setEditFoodValues] = useState<{ [key: string]: FoodBreakdown }>({});
+  const [recalculatingMeals, setRecalculatingMeals] = useState<Set<string>>(new Set());
 
   const toggleMealExpansion = (mealId: string) => {
     const newExpanded = new Set(expandedMeals);
@@ -203,6 +204,65 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
     }
   };
 
+  const recalculateMealWithAI = async (meal: MealEntry) => {
+    setRecalculatingMeals(prev => new Set(prev).add(meal.id));
+    
+    try {
+      console.log('🤖 Recalculating meal with AI for enhanced accuracy:', meal.originalText);
+      
+      const response = await fetch('/api/analyze-meal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mealDescription: meal.originalText,
+          isRecalculation: true,
+          previousResult: {
+            protein: meal.macros.protein,
+            carbs: meal.macros.carbs,
+            fat: meal.macros.fat,
+            calories: meal.macros.calories
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze meal');
+      }
+
+      const aiResponse = await response.json();
+      
+      // Update the meal with new AI analysis
+      await updateMeal(meal.id, {
+        macros: {
+          protein: aiResponse.protein,
+          carbs: aiResponse.carbs,
+          fat: aiResponse.fat,
+          calories: aiResponse.calories
+        },
+        breakdown: aiResponse.breakdown || [],
+        reasoning: aiResponse.reasoning || '',
+        validation: aiResponse.validation || ''
+      });
+      
+      if (onMealUpdated) {
+        onMealUpdated();
+      }
+      
+      console.log('✅ Meal recalculated successfully with enhanced accuracy');
+    } catch (error) {
+      console.error('Error recalculating meal:', error);
+      alert('Error recalculating meal. Please try again.');
+    } finally {
+      setRecalculatingMeals(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(meal.id);
+        return newSet;
+      });
+    }
+  };
+
   if (meals.length === 0) {
     return (
       <div className="glass-card text-center space-y-4 animate-fade-in">
@@ -233,6 +293,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
         {meals.map((meal, index) => {
           const isExpanded = expandedMeals.has(meal.id);
           const isEditing = editingMeals.has(meal.id);
+          const isRecalculating = recalculatingMeals.has(meal.id);
           const hasBreakdown = meal.breakdown && meal.breakdown.length > 0;
           const currentMacros = isEditing ? editValues[meal.id] : meal.macros;
           
@@ -278,6 +339,20 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                       </button>
                     </div>
                   )}
+                  
+                  {/* Recalculate with AI button */}
+                  <button
+                    onClick={() => recalculateMealWithAI(meal)}
+                    disabled={isRecalculating}
+                    className={`text-tertiary transition-colors tap-effect p-1 ${
+                      isRecalculating 
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'hover:text-purple-400'
+                    }`}
+                    title="Recalculate with AI"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
+                  </button>
                   
                   {/* AI analysis button */}
                   <button
@@ -562,41 +637,8 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                         })}
                       </div>
                       
-                      {/* Validation */}
-                      {meal.validation && (
-                        <div className="bg-green-500/10 border border-green-400/20 rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Info className="w-3 h-3 text-green-400" />
-                            <span className="text-xs font-medium text-green-400">Validation</span>
-                          </div>
-                          <p className="text-xs text-secondary leading-relaxed">
-                            {meal.validation}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {/* Total Verification */}
-                      <div className="bg-green-500/10 border border-green-400/20 rounded-lg p-2">
-                        <div className="text-xs font-medium text-green-400 mb-1">Total Summary</div>
-                        <div className="grid grid-cols-4 gap-1 text-center">
-                          <div>
-                            <div className="text-xs font-bold text-green-400">{meal.macros.protein}g</div>
-                            <div className="text-xs text-tertiary opacity-60">Protein</div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-green-400">{meal.macros.carbs}g</div>
-                            <div className="text-xs text-tertiary opacity-60">Carbs</div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-green-400">{meal.macros.fat}g</div>
-                            <div className="text-xs text-tertiary opacity-60">Fat</div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-green-400">{meal.macros.calories}</div>
-                            <div className="text-xs text-tertiary opacity-60">kcal</div>
-                          </div>
-                        </div>
-                      </div>
+
+
                     </>
                   ) : (
                     /* No breakdown data available */

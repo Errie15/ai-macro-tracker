@@ -1,108 +1,63 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
+import { FOOD_DATABASE, searchFoodDatabase, FoodDatabaseItem } from '@/lib/food-database';
 
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
 
-// System prompt that defines AI behavior and expertise
-const SYSTEM_PROMPT = `
-You are a precision nutrition analyst with access to validated USDA nutritional databases. Your goal is to provide the most accurate and scientifically realistic macronutrient breakdown possible.
+// Generate dynamic system prompt with food database
+function generateSystemPrompt(foodDatabase: FoodDatabaseItem[]): string {
+  const validatedFoodsList = foodDatabase
+    .filter(food => food.verified)
+    .slice(0, 200)
+    .map(food => 
+      `${food.name} (per ${food.serving.amount}${food.serving.unit}): ${food.macros.protein}g protein, ${food.macros.carbs}g carbs, ${food.macros.fat}g fat, ${food.macros.calories} kcal`
+    )
+    .join('\n');
 
-CORE PRINCIPLES:
-1. ACCURACY: Use only real, validated nutritional data from USDA or equivalent scientific sources
-2. CONSISTENCY: Identical inputs must always produce identical outputs
-3. SCIENTIFIC REALISM: All values must be physiologically and nutritionally realistic
-4. NEVER GUESS: Always calculate calories using the formula: (protein × 4) + (carbs × 4) + (fat × 9)
+  return `
+You are a nutrition analyst. Analyze meals using the food database and calculate accurate macros.
 
-VALIDATED USDA NUTRITIONAL DATA (USE THESE EXACT VALUES):
-Salmon, Atlantic, farmed, cooked (per 100g): 25g protein, 0g carbs, 12g fat, 206 kcal
-Sweet potato, baked (per 100g): 2g protein, 20g carbs, 0.1g fat, 90 kcal
-Broccoli, cooked, boiled (per 100g): 3g protein, 7g carbs, 0.4g fat, 34 kcal
-Olive oil (per 1 tbsp/13.5g): 0g protein, 0g carbs, 13.5g fat, 119 kcal
-Rice, white, long-grain, cooked (per 100g): 4g protein, 28g carbs, 0.3g fat, 130 kcal
-Chicken breast, skinless, roasted (per 100g): 31g protein, 0g carbs, 3.6g fat, 165 kcal
-Pasta, cooked, enriched (per 100g): 5g protein, 25g carbs, 1.1g fat, 131 kcal
-Avocado, raw (per 100g): 2g protein, 9g carbs, 15g fat, 160 kcal
-Eggs, whole, cooked, hard-boiled (per 100g): 13g protein, 1g carbs, 11g fat, 155 kcal
-Greek yogurt, plain, non-fat (per 100g): 10g protein, 4g carbs, 0g fat, 59 kcal
+FOOD DATABASE:
+${validatedFoodsList}
 
-STANDARD PORTION SIZES (SCIENTIFICALLY VALIDATED):
-- Fish fillet (salmon, cod, tuna): 150g (standard restaurant/home serving)
-- Chicken breast: 150g (single breast portion)
-- Sweet potato, medium: 150g (typical medium potato)
-- Rice/pasta, cooked: 150g (standard side portion)
-- Vegetables, cooked: 100g (standard vegetable serving)
-- Olive oil drizzle: 1 tbsp (13.5g - measured tablespoon)
-- Nuts: 30g (standard snack portion)
-- Bread slice: 30g (average slice weight)
-- Avocado: 100g (half medium avocado)
-- Eggs: 50g per egg (large egg)
+RULES:
+1. Find foods in the database that match the meal description
+2. Scale portions if needed: (requested_amount / database_amount) × database_macros
+3. For alcohol: Add alcohol calories = volume(ml) × ABV% × 0.789 × 7
+4. Sum all foods: total_protein, total_carbs, total_fat, total_calories
+5. Your JSON output numbers must match your reasoning calculations exactly
 
-MANDATORY CALCULATION RULES:
-1. ALWAYS use the exact USDA values provided above
-2. ALWAYS calculate calories using: (protein × 4) + (carbs × 4) + (fat × 9)
-3. NEVER use approximated or guessed calorie values
-4. Round final totals to whole numbers
-5. Validate that calculated calories match the 4-4-9 formula within ±2 kcal
+BASIC MATH:
+- 2 shots × 4cl each = 8cl = 80ml
+- 3 shots × 4cl each = 12cl = 120ml
+- 1 cl = 10ml
 
-CONSISTENCY REQUIREMENTS:
-- Same meal description = identical results every time
-- Use exact portion sizes from the standard table
-- Apply identical nutritional values for identical foods
-- Never vary based on "cooking style" unless explicitly different
+ALCOHOL DETECTION:
+- beer, wine, vodka, whiskey, rum, gin, tequila, cocktails = alcoholic
+- For alcoholic items: use calculated calories (includes alcohol)
+- For non-alcoholic: calories = (protein×4) + (carbs×4) + (fat×9)
 
-SCIENTIFIC VALIDATION:
-- Protein: 10-40g per 100g for protein sources
-- Carbohydrates: 0-80g per 100g (highest in grains/starches)
-- Fat: 0-90g per 100g (highest in oils/nuts)
-- Total macros must be physiologically realistic for described foods
-
-ANALYSIS WORKFLOW:
-1. Identify each distinct food item mentioned
-2. Apply standard portion size from validated table
-3. Calculate macros using exact USDA values
-4. Sum all components
-5. Calculate total calories using 4-4-9 formula
-6. Validate scientific realism
-7. Confirm consistency with previous analyses
-
-STRICT JSON RESPONSE FORMAT:
+JSON FORMAT:
 {
-  "protein": <total grams - whole number>,
-  "carbs": <total grams - whole number>,
-  "fat": <total grams - whole number>,
-  "calories": <calculated using 4-4-9 formula - whole number>,
+  "protein": <total grams>,
+  "carbs": <total grams>, 
+  "fat": <total grams>,
+  "calories": <total calories including alcohol>,
   "breakdown": [
     {
-      "food": "<exact food name from USDA database>",
-      "estimatedAmount": "<standard portion + unit>",
+      "food": "<exact database name>",
+      "estimatedAmount": "<amount>",
       "protein": <grams>,
       "carbs": <grams>,
       "fat": <grams>,
-      "calories": <calculated using 4-4-9 formula>
+      "calories": <calories>
     }
   ],
-  "reasoning": "<explanation using USDA values and standard portions>",
-  "validation": "<confirmation of 4-4-9 calculation and scientific realism>"
+  "reasoning": "<show your calculations>",
+  "validation": "<confirm totals match calculations>"
 }
-
-EXAMPLE FOR ABSOLUTE CONSISTENCY:
-Input: "Grilled salmon fillet with roasted sweet potatoes and steamed broccoli, drizzled with olive oil"
-
-Expected Output:
-- Salmon (150g): 38g protein, 0g carbs, 18g fat, 308 kcal
-- Sweet potato (150g): 3g protein, 30g carbs, 0g fat, 135 kcal
-- Broccoli (100g): 3g protein, 7g carbs, 0g fat, 34 kcal
-- Olive oil (13.5g): 0g protein, 0g carbs, 14g fat, 119 kcal
-TOTAL: 44g protein, 37g carbs, 32g fat, 596 kcal
-Validation: (44×4 + 37×4 + 32×9) = 612 kcal ≈ 596 kcal ✓
-
-CRITICAL REQUIREMENTS:
-- NEVER invent foods not mentioned
-- NEVER approximate calories - always calculate
-- NEVER vary results for identical inputs
-- ALWAYS use validated USDA nutritional data
-- ALWAYS prioritize scientific accuracy over convenience
 `;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -115,7 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { mealDescription } = await request.json();
+    const { mealDescription, isRecalculation, previousResult } = await request.json();
 
     if (!mealDescription || typeof mealDescription !== 'string') {
       console.error('❌ Meal description missing or invalid');
@@ -127,6 +82,10 @@ export async function POST(request: NextRequest) {
 
     console.log('🍽️ ==================== MEAL ANALYSIS START ====================');
     console.log('📝 Original meal description:', mealDescription);
+    if (isRecalculation) {
+      console.log('🔄 RECALCULATION MODE: Seeking enhanced accuracy');
+      console.log('📊 Previous result:', previousResult);
+    }
     console.log('🤖 Using AI model: gemini-1.5-flash');
 
     const model = genAI.getGenerativeModel({ 
@@ -138,8 +97,25 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Generate system prompt with current food database
+    const systemPrompt = generateSystemPrompt(FOOD_DATABASE);
+    
+        // Create enhanced prompt for recalculation
+    const recalculationInstructions = isRecalculation ? `
+    
+    RECALCULATION MODE: The user wants more accurate results.
+    Previous result: ${JSON.stringify(previousResult)}
+    
+    Re-examine the meal description carefully:
+    - Check food identification 
+    - Verify portion sizes
+    - Double-check calculations
+    - Only return same result if 100% certain
+    ` : '';
+
     const prompt = `
-    ${SYSTEM_PROMPT}
+    ${systemPrompt}
+    ${recalculationInstructions}
     
     Analyze the following meal description and provide accurate nutritional estimates with validation.
     
@@ -224,21 +200,34 @@ export async function POST(request: NextRequest) {
     const carbs = Math.max(0, Math.round(parsedData.carbs || 0));
     const fat = Math.max(0, Math.round(parsedData.fat || 0));
     
-    // ALWAYS calculate calories using 4-4-9 formula - NEVER trust AI calories
+    // Check if this is alcoholic beverage by looking at meal description and food breakdown
+    const mealLower = mealDescription.toLowerCase();
+    const isAlcoholic = mealLower.includes('beer') || mealLower.includes('wine') || mealLower.includes('vodka') || 
+                       mealLower.includes('whiskey') || mealLower.includes('rum') || mealLower.includes('gin') ||
+                       mealLower.includes('cocktail') || mealLower.includes('alcohol') || mealLower.includes('champagne') ||
+                       mealLower.includes('mojito') || mealLower.includes('margarita') || mealLower.includes('tequila') ||
+                       (parsedData.breakdown && parsedData.breakdown.some((item: any) => 
+                         item.food?.toLowerCase().includes('beer') || item.food?.toLowerCase().includes('wine') ||
+                         item.food?.toLowerCase().includes('vodka') || item.food?.toLowerCase().includes('alcohol')
+                       ));
+    
     const calculatedCalories = Math.round((protein * 4) + (carbs * 4) + (fat * 9));
     const aiCalories = Math.max(0, Math.round(parsedData.calories || 0));
     
-    // Use calculated calories ALWAYS - this ensures scientific accuracy
-    const calories = calculatedCalories;
+    // For alcoholic beverages, trust AI calculation (includes alcohol calories)
+    // For non-alcoholic items, use 4-4-9 formula
+    const calories = isAlcoholic ? aiCalories : calculatedCalories;
     
     const caloriesDiff = Math.abs(calculatedCalories - aiCalories);
-    if (caloriesDiff > 5) {
+    if (isAlcoholic && aiCalories > calculatedCalories) {
+      console.log(`🍺 ALCOHOL DETECTED: Using AI calories (${aiCalories}) which include alcohol content (vs ${calculatedCalories} from 4-4-9)`);
+    } else if (caloriesDiff > 5 && !isAlcoholic) {
       console.log(`🧮 CORRECTED: AI calories (${aiCalories}) replaced with calculated (${calculatedCalories}) using 4-4-9 formula`);
     } else {
       console.log(`✅ VALIDATED: AI calories (${aiCalories}) match calculated (${calculatedCalories}) within tolerance`);
     }
 
-    // Validate and correct breakdown items using 4-4-9 formula
+    // Validate and correct breakdown items - preserve alcohol calories for alcoholic items
     const validatedBreakdown = (parsedData.breakdown || []).map((item: any, index: number) => {
       const itemProtein = Math.max(0, Math.round(item.protein || 0));
       const itemCarbs = Math.max(0, Math.round(item.carbs || 0));
@@ -246,8 +235,20 @@ export async function POST(request: NextRequest) {
       const calculatedItemCalories = Math.round((itemProtein * 4) + (itemCarbs * 4) + (itemFat * 9));
       const aiItemCalories = Math.max(0, Math.round(item.calories || 0));
       
+      // Check if this breakdown item is alcoholic
+      const itemLower = (item.food || '').toLowerCase();
+      const isAlcoholicItem = itemLower.includes('beer') || itemLower.includes('wine') || itemLower.includes('vodka') || 
+                             itemLower.includes('whiskey') || itemLower.includes('rum') || itemLower.includes('gin') ||
+                             itemLower.includes('cocktail') || itemLower.includes('alcohol') || itemLower.includes('champagne') ||
+                             itemLower.includes('mojito') || itemLower.includes('margarita') || itemLower.includes('tequila');
+      
+      // For alcoholic items, use AI calories (includes alcohol), for others use calculated
+      const itemCalories = isAlcoholicItem ? aiItemCalories : calculatedItemCalories;
+      
       const itemCaloriesDiff = Math.abs(calculatedItemCalories - aiItemCalories);
-      if (itemCaloriesDiff > 3) {
+      if (isAlcoholicItem && aiItemCalories > calculatedItemCalories) {
+        console.log(`🍺 ALCOHOL ITEM DETECTED: ${item.food} - Using AI calories (${aiItemCalories}) with alcohol content`);
+      } else if (itemCaloriesDiff > 3 && !isAlcoholicItem) {
         console.log(`🧮 CORRECTED breakdown item ${index + 1} (${item.food}): AI calories (${aiItemCalories}) → calculated (${calculatedItemCalories})`);
       }
       
@@ -257,7 +258,7 @@ export async function POST(request: NextRequest) {
         protein: itemProtein,
         carbs: itemCarbs,
         fat: itemFat,
-        calories: calculatedItemCalories // Always use calculated calories
+        calories: itemCalories // Use AI calories for alcohol, calculated for others
       };
     });
 

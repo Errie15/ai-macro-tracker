@@ -121,6 +121,8 @@ export default function Home() {
       return tomorrow.getTime() - now.getTime();
     };
 
+    let dailyInterval: NodeJS.Timeout | null = null;
+
     // Set timeout for exact midnight reset
     const msUntilMidnight = getMillisecondsUntilMidnight();
     const midnightTimeout = setTimeout(() => {
@@ -128,12 +130,10 @@ export default function Home() {
       loadTodaysMeals(); // Reset to new day's meals (empty)
       
       // Set up daily interval for subsequent midnights
-      const dailyInterval = setInterval(() => {
+      dailyInterval = setInterval(() => {
         console.log('🌙 Daily reset at midnight...');
         loadTodaysMeals();
       }, 24 * 60 * 60 * 1000); // 24 hours
-
-      return () => clearInterval(dailyInterval);
     }, msUntilMidnight);
 
     // Also check every minute for date changes (backup)
@@ -151,9 +151,13 @@ export default function Home() {
     return () => {
       clearTimeout(midnightTimeout);
       clearInterval(checkInterval);
+      if (dailyInterval) {
+        clearInterval(dailyInterval);
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [todaysMeals]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Calculate total macros when meals change
   useEffect(() => {
