@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignIn() {
@@ -9,8 +9,6 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const emailInputRef = useRef<HTMLInputElement>(null);
-  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
@@ -24,34 +22,6 @@ export default function SignIn() {
       console.log('🔧 Running in PWA mode');
     } else {
       console.log('🌐 Running in browser mode');
-    }
-  }, []);
-
-  // iOS input field fix
-  useEffect(() => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    
-    if (isIOS) {
-      console.log('📱 iOS detected, applying input fixes');
-      
-      const handleInputFocus = (inputRef: React.RefObject<HTMLInputElement>) => {
-        return () => {
-          setTimeout(() => {
-            if (inputRef.current) {
-              inputRef.current.focus();
-              inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }, 300);
-        };
-      };
-
-      // Add click handlers for iOS
-      if (emailInputRef.current) {
-        emailInputRef.current.addEventListener('click', handleInputFocus(emailInputRef));
-      }
-      if (passwordInputRef.current) {
-        passwordInputRef.current.addEventListener('click', handleInputFocus(passwordInputRef));
-      }
     }
   }, []);
 
@@ -109,20 +79,14 @@ export default function SignIn() {
               Email
             </label>
             <input
-              ref={emailInputRef}
               type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              style={{ 
-                fontSize: '16px',
-                WebkitAppearance: 'none',
-                borderRadius: '8px'
-              }}
+              style={{ fontSize: '16px' }}
               placeholder="Enter your email"
               autoComplete="email"
-              inputMode="email"
               required
             />
           </div>
@@ -132,17 +96,12 @@ export default function SignIn() {
               Password
             </label>
             <input
-              ref={passwordInputRef}
               type="password"
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              style={{ 
-                fontSize: '16px',
-                WebkitAppearance: 'none',
-                borderRadius: '8px'
-              }}
+              style={{ fontSize: '16px' }}
               placeholder="Enter your password"
               autoComplete="current-password"
               required
