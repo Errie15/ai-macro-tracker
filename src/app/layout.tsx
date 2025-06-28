@@ -25,8 +25,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5,
-  userScalable: true,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: 'cover',
   themeColor: '#22c55e'
 }
@@ -46,9 +46,31 @@ export default function RootLayout({
         <meta name="theme-color" content="#22c55e" />
         <link rel="apple-touch-icon" href="/icon-emoji.svg" />
         <link rel="icon" href="/icon-emoji.svg" type="image/svg+xml" />
-<script
+        <script
           dangerouslySetInnerHTML={{
             __html: `
+              // PWA detection and dynamic viewport handling
+              function updateViewportForPWA() {
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                             window.navigator.standalone === true ||
+                             document.referrer.includes('android-app://');
+                
+                if (isPWA) {
+                  console.log('🔧 PWA Mode: Disabling zoom');
+                  // Ensure no zooming in PWA mode
+                  let viewport = document.querySelector('meta[name="viewport"]');
+                  if (viewport) {
+                    viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+                  }
+                } else {
+                  console.log('🌐 Browser Mode: Allowing controlled zoom');
+                }
+              }
+              
+              // Run immediately and on load
+              updateViewportForPWA();
+              window.addEventListener('load', updateViewportForPWA);
+              
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js')

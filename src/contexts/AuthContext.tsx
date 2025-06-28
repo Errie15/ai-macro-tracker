@@ -30,25 +30,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
+    let isHandlingRedirect = false;
+
     // Check for redirect result when app starts (for PWA Google login)
     const checkRedirectResult = async () => {
+      if (isHandlingRedirect) return;
+      isHandlingRedirect = true;
+
       try {
+        console.log('🔍 Checking for Google redirect result...');
         const { getRedirectResult } = await import('firebase/auth');
         const result = await getRedirectResult(auth);
+        
         if (result) {
-          console.log('✅ Google login redirect successful');
+          console.log('✅ Google login redirect successful:', result.user.email);
+          console.log('🔧 User signed in via redirect:', result.user.displayName);
+        } else {
+          console.log('ℹ️ No redirect result found');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Google login redirect error:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        
+        // Handle specific redirect errors
+        if (error.code === 'auth/popup-closed-by-user' || 
+            error.code === 'auth/cancelled-popup-request') {
+          console.log('ℹ️ User cancelled the sign-in process');
+        } else if (error.code === 'auth/network-request-failed') {
+          console.log('❌ Network error during redirect');
+        } else {
+          console.log('❌ Unknown redirect error:', error.code);
+        }
+      } finally {
+        isHandlingRedirect = false;
       }
     };
 
-    checkRedirectResult();
-
+    // Set up auth state listener
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('🔄 Auth state changed:', user ? user.email : 'No user');
       setUser(user);
       setLoading(false);
     });
+
+    // Check redirect result
+    checkRedirectResult();
 
     return () => unsubscribe();
   }, []);
@@ -72,15 +99,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { GoogleAuthProvider } = await import('firebase/auth');
     const provider = new GoogleAuthProvider();
     
-    // Use redirect for PWA/standalone mode, popup for browser
-    if (isPWA()) {
+    // Add additional scopes and settings
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
+    const pwaMode = isPWA();
+    console.log('🚀 Starting Google sign-in in mode:', pwaMode ? 'PWA (redirect)' : 'Browser (popup)');
+    
+    if (pwaMode) {
       console.log('🔄 Using redirect flow for PWA mode');
       const { signInWithRedirect } = await import('firebase/auth');
-      await signInWithRedirect(auth, provider);
+      
+      // Store that we're attempting a redirect
+      sessionStorage.setItem('google_auth_pending', 'true');
+      
+      try {
+        await signInWithRedirect(auth, provider);
+        // Note: signInWithRedirect doesn't return a result immediately
+        // The result is handled in the redirect callback
+        console.log('✅ Redirect initiated successfully');
+      } catch (error: any) {
+        console.error('❌ Redirect initiation failed:', error);
+        sessionStorage.removeItem('google_auth_pending');
+        throw error;
+      }
     } else {
       console.log('🔄 Using popup flow for browser mode');
       const { signInWithPopup } = await import('firebase/auth');
-      await signInWithPopup(auth, provider);
+      
+      try {
+        const result = await signInWithPopup(auth, provider);
+        console.log('✅ Popup sign-in successful:', result.user.email);
+      } catch (error: any) {
+        console.error('❌ Popup sign-in failed:', error);
+        throw error;
+      }
     }
   };
 
