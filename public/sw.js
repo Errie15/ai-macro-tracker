@@ -5,6 +5,15 @@ const urlsToCache = [
   '/icon.svg'
 ];
 
+// URLs that should never be cached (authentication related)
+const EXCLUDED_URLS = [
+  'accounts.google.com',
+  'firebase',
+  'firebaseapp.com',
+  'googleapis.com',
+  'identitytoolkit.googleapis.com'
+];
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -13,6 +22,17 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+  
+  // Don't cache authentication related requests
+  const shouldExclude = EXCLUDED_URLS.some(excludedUrl => url.includes(excludedUrl));
+  
+  if (shouldExclude || event.request.method !== 'GET') {
+    // For auth requests and non-GET requests, always fetch from network
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

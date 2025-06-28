@@ -17,11 +17,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper function to detect mobile devices
-const isMobileDevice = () => {
-  if (typeof window === 'undefined') return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-         (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(navigator.platform));
+// Function to detect if app is running in PWA/standalone mode
+const isPWA = () => {
+  return window.matchMedia('(display-mode: standalone)').matches || 
+         (window.navigator as any).standalone === true ||
+         document.referrer.includes('android-app://');
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -30,30 +30,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
+    // Check for redirect result when app starts (for PWA Google login)
+    const checkRedirectResult = async () => {
+      try {
+        const { getRedirectResult } = await import('firebase/auth');
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log('✅ Google login redirect successful');
+        }
+      } catch (error) {
+        console.error('❌ Google login redirect error:', error);
+      }
+    };
+
+    checkRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
-
-  // Handle redirect result for mobile Google sign-in
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const { getRedirectResult } = await import('firebase/auth');
-        const result = await getRedirectResult(auth);
-        if (result) {
-          // User signed in successfully via redirect
-          console.log('Google sign-in redirect successful');
-        }
-      } catch (error) {
-        console.error('Error handling redirect result:', error);
-      }
-    };
-
-    handleRedirectResult();
   }, []);
 
   const triggerRefresh = () => {
@@ -75,16 +72,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { GoogleAuthProvider } = await import('firebase/auth');
     const provider = new GoogleAuthProvider();
     
-    // Add additional scopes if needed
-    provider.addScope('email');
-    provider.addScope('profile');
-
-    if (isMobileDevice()) {
-      // Use redirect for mobile devices
+    // Use redirect for PWA/standalone mode, popup for browser
+    if (isPWA()) {
+      console.log('🔄 Using redirect flow for PWA mode');
       const { signInWithRedirect } = await import('firebase/auth');
       await signInWithRedirect(auth, provider);
     } else {
-      // Use popup for desktop devices
+      console.log('🔄 Using popup flow for browser mode');
       const { signInWithPopup } = await import('firebase/auth');
       await signInWithPopup(auth, provider);
     }
