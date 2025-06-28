@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignIn() {
@@ -11,9 +11,12 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [isPWA, setIsPWA] = useState(false);
 
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
-  // PWA detection and input fixes
+  // PWA detection and mobile optimization
   useEffect(() => {
     const isPWAMode = window.matchMedia('(display-mode: standalone)').matches || 
                       (window.navigator as any).standalone === true ||
@@ -22,42 +25,66 @@ export default function SignIn() {
     setIsPWA(isPWAMode);
     
     if (isPWAMode) {
-      console.log('🔧 Running in PWA mode - applying input fixes');
+      console.log('🔧 Running in PWA mode - applying mobile optimizations');
       
-      // Add PWA-specific event listeners
-      const handleInputFocus = (e: FocusEvent) => {
-        const target = e.target as HTMLInputElement;
-        if (target && (target.type === 'email' || target.type === 'password')) {
-          // Ensure input is visible and properly styled
-          target.style.transform = 'translateZ(0)';
-          target.style.webkitTransform = 'translateZ(0)';
-          
-          // Scroll into view after a short delay
+      // Force focus behavior for PWA mode
+      const inputs = document.querySelectorAll('input');
+      inputs.forEach(input => {
+        // Ensure proper mobile input behavior
+        input.addEventListener('touchstart', (e) => {
+          e.stopPropagation();
+        }, { passive: true });
+        
+        input.addEventListener('focus', () => {
+          // Scroll input into view on focus
           setTimeout(() => {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }, 100);
-        }
-      };
-
-      const handleInputBlur = (e: FocusEvent) => {
-        const target = e.target as HTMLInputElement;
-        if (target) {
-          target.style.transform = '';
-          target.style.webkitTransform = '';
-        }
-      };
-
-      document.addEventListener('focusin', handleInputFocus);
-      document.addEventListener('focusout', handleInputBlur);
-
-      return () => {
-        document.removeEventListener('focusin', handleInputFocus);
-        document.removeEventListener('focusout', handleInputBlur);
-      };
-    } else {
-      console.log('🌐 Running in browser mode');
+        });
+      });
     }
   }, []);
+
+  // Handle email input with mobile optimizations
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    
+    // Clear any previous errors when user starts typing
+    if (error) {
+      setError('');
+    }
+  };
+
+  // Handle password input with mobile optimizations
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+    
+    // Clear any previous errors when user starts typing
+    if (error) {
+      setError('');
+    }
+  };
+
+  // Mobile-optimized input focus handlers
+  const handleEmailFocus = () => {
+    if (isPWA && emailRef.current) {
+      // Force focus and ensure input is visible
+      setTimeout(() => {
+        emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  };
+
+  const handlePasswordFocus = () => {
+    if (isPWA && passwordRef.current) {
+      // Force focus and ensure input is visible
+      setTimeout(() => {
+        passwordRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,11 +116,6 @@ export default function SignIn() {
     }
   };
 
-  // PWA-optimized input class
-  const inputClass = `w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-    isPWA ? 'text-base' : ''
-  }`;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
@@ -104,6 +126,9 @@ export default function SignIn() {
           <p className="text-gray-600">
             {isLogin ? 'Track your macros and reach your goals' : 'Start your macro tracking journey'}
           </p>
+          {isPWA && (
+            <p className="text-xs text-blue-600 mt-2">🔧 PWA Mode Active</p>
+          )}
         </div>
 
         {error && (
@@ -118,20 +143,23 @@ export default function SignIn() {
               Email
             </label>
             <input
+              ref={emailRef}
               type="email"
               id="email"
               name="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClass}
+              onChange={handleEmailChange}
+              onFocus={handleEmailFocus}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
               style={{ 
                 fontSize: '16px',
                 WebkitAppearance: 'none',
-                WebkitBorderRadius: '8px'
+                WebkitBorderRadius: '8px',
+                WebkitTextFillColor: '#111827'
               }}
               placeholder="Enter your email"
               autoComplete="email"
-              autoCapitalize="off"
+              autoCapitalize="none"
               autoCorrect="off"
               spellCheck="false"
               inputMode="email"
@@ -144,20 +172,23 @@ export default function SignIn() {
               Password
             </label>
             <input
+              ref={passwordRef}
               type="password"
               id="password"
               name="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClass}
+              onChange={handlePasswordChange}
+              onFocus={handlePasswordFocus}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
               style={{ 
                 fontSize: '16px',
                 WebkitAppearance: 'none',
-                WebkitBorderRadius: '8px'
+                WebkitBorderRadius: '8px',
+                WebkitTextFillColor: '#111827'
               }}
               placeholder="Enter your password"
               autoComplete="current-password"
-              autoCapitalize="off"
+              autoCapitalize="none"
               autoCorrect="off"
               spellCheck="false"
               required
@@ -168,7 +199,7 @@ export default function SignIn() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             style={{ fontSize: '16px' }}
           >
             {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
@@ -179,7 +210,7 @@ export default function SignIn() {
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            className="w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center font-medium"
             style={{ fontSize: '16px' }}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
