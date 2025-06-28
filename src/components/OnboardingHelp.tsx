@@ -17,7 +17,7 @@ const HELP_STEPS: { id: OnboardingStep; title: string; description: string }[] =
     description: 'Set your macro goals to track your nutrition effectively'
   },
   {
-    id: 'walkthrough',
+    id: 'tour',
     title: 'Learn the App',
     description: 'Discover how to make the most of your macro tracking'
   }
@@ -39,10 +39,10 @@ export default function OnboardingHelp({ onComplete }: OnboardingHelpProps) {
     setIsStepComplete(true);
   }, [completedSteps]);
 
-  // Auto-complete walkthrough step when it becomes active
+  // Auto-complete tour step when it becomes active
   useEffect(() => {
-    if (currentStep.id === 'walkthrough' && !completedSteps.includes('walkthrough')) {
-      handleStepComplete('walkthrough');
+    if (currentStep.id === 'tour' && !completedSteps.includes('tour')) {
+      handleStepComplete('tour');
     }
   }, [currentStep.id, completedSteps, handleStepComplete]);
 
@@ -90,7 +90,7 @@ export default function OnboardingHelp({ onComplete }: OnboardingHelpProps) {
     switch (currentStep.id) {
       case 'macros':
         return <OnboardingMacros onComplete={() => handleStepComplete('macros')} />;
-      case 'walkthrough':
+      case 'tour':
         return <OnboardingWalkthrough onComplete={() => {}} hideNavigation={true} />;
       default:
         return null;
