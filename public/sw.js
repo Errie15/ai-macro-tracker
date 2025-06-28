@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ai-macro-tracker-v1';
+const CACHE_NAME = 'ai-macro-tracker-v2-pwa-fix';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -15,6 +15,7 @@ const EXCLUDED_URLS = [
 ];
 
 self.addEventListener('install', (event) => {
+  console.log('🔧 Installing SW with PWA input fixes');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
@@ -44,11 +45,13 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('🔧 Activating SW with PWA input fixes');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log('🗑️ Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })

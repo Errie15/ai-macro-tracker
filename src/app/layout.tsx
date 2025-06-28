@@ -25,8 +25,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: 'cover',
   themeColor: '#22c55e'
 }
@@ -54,11 +54,101 @@ export default function RootLayout({
                   navigator.serviceWorker.register('/sw.js')
                     .then(function(registration) {
                       console.log('SW registered: ', registration);
+                      
+                      // Check for updates
+                      registration.addEventListener('updatefound', function() {
+                        const newWorker = registration.installing;
+                        if (newWorker) {
+                          newWorker.addEventListener('statechange', function() {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                              console.log('🔄 New SW available, reloading...');
+                              window.location.reload();
+                            }
+                          });
+                        }
+                      });
                     })
                     .catch(function(registrationError) {
                       console.log('SW registration failed: ', registrationError);
                     });
                 });
+              }
+
+              // PWA Input Field Fix for iOS
+              function fixPWAInputs() {
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                             (window.navigator).standalone === true ||
+                             document.referrer.includes('android-app://');
+                
+                if (isPWA) {
+                  console.log('🔧 Applying PWA input fixes');
+                  
+                  // Add event listeners to all input fields
+                  document.addEventListener('DOMContentLoaded', function() {
+                    const inputs = document.querySelectorAll('input, textarea, select');
+                    
+                    inputs.forEach(function(input) {
+                      // Prevent viewport zoom on focus
+                      input.addEventListener('focus', function(e) {
+                        const viewport = document.querySelector('meta[name="viewport"]');
+                        if (viewport) {
+                          viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+                        }
+                      });
+                      
+                      // Restore normal viewport on blur
+                      input.addEventListener('blur', function(e) {
+                        const viewport = document.querySelector('meta[name="viewport"]');
+                        if (viewport) {
+                          viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover');
+                        }
+                      });
+
+                      // Force focus for iOS PWA
+                      input.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
+                        setTimeout(() => {
+                          input.focus();
+                          input.click();
+                        }, 100);
+                      });
+                    });
+                  });
+                  
+                  // Re-apply fixes when new content is loaded
+                  const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                      if (mutation.addedNodes.length > 0) {
+                        mutation.addedNodes.forEach(function(node) {
+                          if (node.nodeType === 1) {
+                            const newInputs = node.querySelectorAll ? node.querySelectorAll('input, textarea, select') : [];
+                            newInputs.forEach(function(input) {
+                              input.addEventListener('touchstart', function(e) {
+                                e.preventDefault();
+                                setTimeout(() => {
+                                  input.focus();
+                                  input.click();
+                                }, 100);
+                              });
+                            });
+                          }
+                        });
+                      }
+                    });
+                  });
+                  
+                  observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                  });
+                }
+              }
+
+              // Apply fixes when DOM is ready
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', fixPWAInputs);
+              } else {
+                fixPWAInputs();
               }
             `,
           }}

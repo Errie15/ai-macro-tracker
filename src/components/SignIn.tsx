@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignIn() {
@@ -9,8 +9,33 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
+
+  // PWA input field fix
+  useEffect(() => {
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  (window.navigator as any).standalone === true ||
+                  document.referrer.includes('android-app://');
+    
+    if (isPWA) {
+      console.log('🔧 Applying PWA input fixes to SignIn component');
+    }
+  }, []);
+
+  const handleInputTouch = (inputRef: React.RefObject<HTMLInputElement>) => {
+    return (e: React.TouchEvent) => {
+      e.preventDefault();
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.click();
+        }
+      }, 100);
+    };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,11 +91,14 @@ export default function SignIn() {
               Email
             </label>
             <input
+              ref={emailRef}
               type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onTouchStart={handleInputTouch(emailRef)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{ fontSize: '16px' }} // Prevent iOS zoom
               placeholder="Enter your email"
               required
             />
@@ -81,11 +109,14 @@ export default function SignIn() {
               Password
             </label>
             <input
+              ref={passwordRef}
               type="password"
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onTouchStart={handleInputTouch(passwordRef)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{ fontSize: '16px' }} // Prevent iOS zoom
               placeholder="Enter your password"
               required
               minLength={6}
