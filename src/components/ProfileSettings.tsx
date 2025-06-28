@@ -122,30 +122,16 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-semibold text-secondary mb-2">
-                  First Name
+                <label htmlFor="username" className="block text-sm font-semibold text-secondary mb-2">
+                  Username
                 </label>
                 <input
-                  id="firstName"
+                  id="username"
                   type="text"
-                  value={profile.firstName || ''}
-                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  value={profile.username || ''}
+                  onChange={(e) => handleInputChange('username', e.target.value)}
                   className="input-field-small w-full"
-                  placeholder="John"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-semibold text-secondary mb-2">
-                  Last Name
-                </label>
-                <input
-                  id="lastName"
-                  type="text"
-                  value={profile.lastName || ''}
-                  onChange={(e) => handleInputChange('lastName', e.target.value)}
-                  className="input-field-small w-full"
-                  placeholder="Doe"
+                  placeholder="your_username"
                 />
               </div>
 
@@ -215,152 +201,16 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
                 />
               </div>
             </div>
-
-            <div>
-              <label htmlFor="activityLevel" className="block text-sm font-semibold text-secondary mb-2">
-                Activity Level
-              </label>
-              <select
-                id="activityLevel"
-                value={profile.activityLevel || ''}
-                onChange={(e) => handleInputChange('activityLevel', e.target.value)}
-                className="select-field-small w-full"
-              >
-                <option value="">Select Activity Level</option>
-                {ACTIVITY_LEVELS.map(level => (
-                  <option key={level.value} value={level.value}>
-                    {level.label}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
-          {/* Fitness Goals */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-primary">Fitness Goals</h3>
-              <button
-                type="button"
-                onClick={() => setShowAddGoal(true)}
-                className="btn-pill-primary px-3 py-1 text-sm"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Goal
-              </button>
-            </div>
-
-            {profile.fitnessGoals && profile.fitnessGoals.length > 0 && (
-              <div className="space-y-2">
-                {profile.fitnessGoals.map(goal => (
-                  <div key={goal.id} className="flex items-center justify-between p-3 rounded-xl bg-white/10">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={goal.isActive}
-                        onChange={() => toggleGoalActive(goal.id)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <div>
-                        <span className={`font-medium ${goal.isActive ? 'text-primary' : 'text-secondary'}`}>
-                          {FITNESS_GOAL_TYPES.find(type => type.value === goal.type)?.label}
-                        </span>
-                        {goal.description && (
-                          <p className="text-sm text-secondary">{goal.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeGoal(goal.id)}
-                      className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {showAddGoal && (
-              <div className="p-4 rounded-xl bg-white/5 space-y-3">
-                <div>
-                  <label className="block text-sm font-semibold text-secondary mb-2">
-                    Goal Type
-                  </label>
-                  <select
-                    value={newGoal.type || ''}
-                    onChange={(e) => setNewGoal(prev => ({ ...prev, type: e.target.value as FitnessGoal['type'] }))}
-                    className="select-field-small w-full"
-                  >
-                    {FITNESS_GOAL_TYPES.map(type => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-secondary mb-2">
-                    Description (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newGoal.description || ''}
-                    onChange={(e) => setNewGoal(prev => ({ ...prev, description: e.target.value }))}
-                    className="input-field-small w-full"
-                    placeholder="Lose 10 kg by summer..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-secondary mb-2">
-                    Target Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={newGoal.targetDate || ''}
-                    onChange={(e) => setNewGoal(prev => ({ ...prev, targetDate: e.target.value }))}
-                    className="input-field-small w-full"
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={addFitnessGoal}
-                    className="btn-pill-primary px-3 py-1 text-sm"
-                  >
-                    Add Goal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddGoal(false)}
-                    className="btn-pill-secondary px-3 py-1 text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Submit Buttons */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-white/20">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-pill-secondary px-6 py-2 tap-effect"
-            >
-              Cancel
-            </button>
+          {/* Save Button */}
+          <div className="flex justify-end pt-6 border-t border-white/20">
             <button
               type="submit"
-              className="btn-pill-primary px-6 py-2 tap-effect hover-lift"
+              className="btn-pill-primary"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Save Profile
+              <Save className="w-5 h-5" />
+              <span>Save Changes</span>
             </button>
           </div>
         </form>

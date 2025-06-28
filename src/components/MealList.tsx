@@ -26,6 +26,8 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
   const [editValues, setEditValues] = useState<{ [mealId: string]: MacroNutrients }>({});
   const [editFoodValues, setEditFoodValues] = useState<{ [key: string]: FoodBreakdown }>({});
   const [recalculatingMeals, setRecalculatingMeals] = useState<Set<string>>(new Set());
+  const [showInstructions, setShowInstructions] = useState<Set<string>>(new Set());
+  const [updatedMealTexts, setUpdatedMealTexts] = useState<{ [mealId: string]: string }>({});
 
   const toggleMealExpansion = (mealId: string) => {
     const newExpanded = new Set(expandedMeals);
@@ -208,7 +210,9 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
     setRecalculatingMeals(prev => new Set(prev).add(meal.id));
     
     try {
-      console.log('🤖 Recalculating meal with AI for enhanced accuracy:', meal.originalText);
+      // Use updated text if available, otherwise use original
+      const mealDescription = updatedMealTexts[meal.id] || meal.originalText;
+      console.log('🤖 Recalculating meal with AI for enhanced accuracy:', mealDescription);
       
       const response = await fetch('/api/analyze-meal', {
         method: 'POST',
@@ -216,7 +220,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          mealDescription: meal.originalText,
+          mealDescription: mealDescription,
           isRecalculation: true,
           previousResult: {
             protein: meal.macros.protein,
@@ -233,8 +237,8 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
 
       const aiResponse = await response.json();
       
-      // Update the meal with new AI analysis
-      await updateMeal(meal.id, {
+      // Update the meal with new AI analysis and potentially updated original text
+      const updateData: any = {
         macros: {
           protein: aiResponse.protein,
           carbs: aiResponse.carbs,
@@ -244,6 +248,26 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
         breakdown: aiResponse.breakdown || [],
         reasoning: aiResponse.reasoning || '',
         validation: aiResponse.validation || ''
+      };
+
+      // If user updated the meal description, save the new description
+      if (updatedMealTexts[meal.id] && updatedMealTexts[meal.id] !== meal.originalText) {
+        updateData.originalText = updatedMealTexts[meal.id];
+      }
+      
+      await updateMeal(meal.id, updateData);
+      
+      // Clear the updated text from state after successful update
+      setUpdatedMealTexts(prev => {
+        const { [meal.id]: _, ...rest } = prev;
+        return rest;
+      });
+
+      // Auto-close the instructions panel after successful recalculation
+      setShowInstructions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(meal.id);
+        return newSet;
       });
       
       if (onMealUpdated) {
@@ -261,6 +285,38 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
         return newSet;
       });
     }
+  };
+
+  const toggleInstructions = (mealId: string) => {
+    setShowInstructions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(mealId)) {
+        newSet.delete(mealId);
+        // Clear any pending updates when closing
+        setUpdatedMealTexts(prevTexts => {
+          const { [mealId]: _, ...rest } = prevTexts;
+          return rest;
+        });
+      } else {
+        newSet.add(mealId);
+        // Initialize with original text when opening
+        const meal = meals.find(m => m.id === mealId);
+        if (meal) {
+          setUpdatedMealTexts(prevTexts => ({
+            ...prevTexts,
+            [mealId]: meal.originalText
+          }));
+        }
+      }
+      return newSet;
+    });
+  };
+
+  const updateMealText = (mealId: string, newText: string) => {
+    setUpdatedMealTexts(prev => ({
+      ...prev,
+      [mealId]: newText
+    }));
   };
 
   if (meals.length === 0) {
@@ -339,20 +395,6 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                       </button>
                     </div>
                   )}
-                  
-                  {/* Recalculate with AI button */}
-                  <button
-                    onClick={() => recalculateMealWithAI(meal)}
-                    disabled={isRecalculating}
-                    className={`text-tertiary transition-colors tap-effect p-1 ${
-                      isRecalculating 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'hover:text-purple-400'
-                    }`}
-                    title="Recalculate with AI"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
-                  </button>
                   
                   {/* AI analysis button */}
                   <button
@@ -467,10 +509,96 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
               {/* Expanded AI Analysis */}
               {isExpanded && (
                 <div className="border-t border-white/10 pt-3 mt-3 space-y-3 animate-slide-up">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Brain className="w-4 h-4 text-blue-400" />
-                    <h4 className="text-sm font-semibold text-primary">AI Analysis</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Brain className="w-4 h-4 text-blue-400" />
+                      <h4 className="text-sm font-semibold text-primary">AI Analysis</h4>
+                    </div>
+                    
+                    {/* Small Improve AI Analysis button next to header */}
+                    <button
+                      onClick={() => toggleInstructions(meal.id)}
+                      disabled={isRecalculating}
+                      className={`text-xs px-2 py-1 rounded-full border transition-colors tap-effect ${
+                        isRecalculating 
+                          ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500' 
+                          : 'bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-400/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50'
+                      }`}
+                      title="Improve AI analysis with better description"
+                    >
+                      {isRecalculating ? 'Recalculating...' : 'Improve AI Analysis'}
+                    </button>
                   </div>
+
+                  {/* Instructions panel - appears right under header when button is clicked */}
+                  {showInstructions.has(meal.id) && (
+                    <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-400/20 rounded-lg p-4 animate-slide-up">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Info className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <span className="text-sm font-medium text-purple-700 dark:text-purple-400">How to Improve AI Analysis</span>
+                      </div>
+                      <div className="space-y-3 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                        <p>
+                          <strong className="text-gray-900 dark:text-white">Edit your meal description below to include more details:</strong>
+                        </p>
+                        
+                        {/* Editable meal description */}
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">
+                            Updated Meal Description:
+                          </label>
+                          <textarea
+                            value={updatedMealTexts[meal.id] || meal.originalText}
+                            onChange={(e) => updateMealText(meal.id, e.target.value)}
+                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 focus:ring-1 focus:ring-purple-500/50 dark:focus:ring-purple-400/50 placeholder-gray-500 dark:placeholder-gray-400"
+                            rows={3}
+                            placeholder="Improve your meal description here..."
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Add specific amounts, cooking methods, brands, etc.
+                          </p>
+                        </div>
+
+                        {/* Action buttons - right below input */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => recalculateMealWithAI(meal)}
+                            disabled={isRecalculating || !updatedMealTexts[meal.id]?.trim()}
+                            className="btn-pill-primary flex-1 text-xs py-2 tap-effect disabled:opacity-50"
+                          >
+                            {isRecalculating ? (
+                              <>
+                                <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                                Recalculating...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Recalculate Now
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => toggleInstructions(meal.id)}
+                            className="btn-pill-secondary flex-1 text-xs py-2 tap-effect"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+
+                        {/* Shortened tips section */}
+                        <div className="pt-2 border-t border-gray-200 dark:border-white/5">
+                          <p className="font-medium text-gray-900 dark:text-white mb-2">Quick Tips:</p>
+                          <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-300">
+                            <div>• Specific amounts (150g, 1 cup)</div>
+                            <div>• Cooking methods (grilled, fried)</div>
+                            <div>• Brand names when known</div>
+                            <div>• Portion sizes (medium, large)</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   {hasBreakdown ? (
                     <>
@@ -636,8 +764,6 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                           );
                         })}
                       </div>
-                      
-
 
                     </>
                   ) : (

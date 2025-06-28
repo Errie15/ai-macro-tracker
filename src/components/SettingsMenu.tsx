@@ -56,6 +56,11 @@ export default function SettingsMenu({
   const getDisplayName = () => {
     if (user?.isAnonymous) return 'Guest';
     
+    // Use profile username if available
+    if (userProfile.username) {
+      return userProfile.username;
+    }
+    
     // Use profile first name if available
     if (userProfile.firstName) {
       return userProfile.firstName;

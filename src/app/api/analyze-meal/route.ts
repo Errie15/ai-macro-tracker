@@ -214,15 +214,14 @@ export async function POST(request: NextRequest) {
     const calculatedCalories = Math.round((protein * 4) + (carbs * 4) + (fat * 9));
     const aiCalories = Math.max(0, Math.round(parsedData.calories || 0));
     
-    // For alcoholic beverages, trust AI calculation (includes alcohol calories)
-    // For non-alcoholic items, use 4-4-9 formula
-    const calories = isAlcoholic ? aiCalories : calculatedCalories;
+    // Always use AI calories - trust the AI analysis for all items
+    const calories = aiCalories;
     
     const caloriesDiff = Math.abs(calculatedCalories - aiCalories);
     if (isAlcoholic && aiCalories > calculatedCalories) {
       console.log(`🍺 ALCOHOL DETECTED: Using AI calories (${aiCalories}) which include alcohol content (vs ${calculatedCalories} from 4-4-9)`);
-    } else if (caloriesDiff > 5 && !isAlcoholic) {
-      console.log(`🧮 CORRECTED: AI calories (${aiCalories}) replaced with calculated (${calculatedCalories}) using 4-4-9 formula`);
+    } else if (caloriesDiff > 5) {
+      console.log(`🤖 USING AI CALORIES: AI calories (${aiCalories}) vs calculated (${calculatedCalories}) - trusting AI analysis`);
     } else {
       console.log(`✅ VALIDATED: AI calories (${aiCalories}) match calculated (${calculatedCalories}) within tolerance`);
     }
@@ -242,14 +241,14 @@ export async function POST(request: NextRequest) {
                              itemLower.includes('cocktail') || itemLower.includes('alcohol') || itemLower.includes('champagne') ||
                              itemLower.includes('mojito') || itemLower.includes('margarita') || itemLower.includes('tequila');
       
-      // For alcoholic items, use AI calories (includes alcohol), for others use calculated
-      const itemCalories = isAlcoholicItem ? aiItemCalories : calculatedItemCalories;
+      // Always use AI calories - trust the AI analysis for all breakdown items
+      const itemCalories = aiItemCalories;
       
       const itemCaloriesDiff = Math.abs(calculatedItemCalories - aiItemCalories);
       if (isAlcoholicItem && aiItemCalories > calculatedItemCalories) {
         console.log(`🍺 ALCOHOL ITEM DETECTED: ${item.food} - Using AI calories (${aiItemCalories}) with alcohol content`);
-      } else if (itemCaloriesDiff > 3 && !isAlcoholicItem) {
-        console.log(`🧮 CORRECTED breakdown item ${index + 1} (${item.food}): AI calories (${aiItemCalories}) → calculated (${calculatedItemCalories})`);
+      } else if (itemCaloriesDiff > 3) {
+        console.log(`🤖 USING AI CALORIES for ${item.food}: AI calories (${aiItemCalories}) vs calculated (${calculatedItemCalories}) - trusting AI analysis`);
       }
       
       return {

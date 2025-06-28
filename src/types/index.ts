@@ -53,10 +53,11 @@ export interface OnboardingState {
   completedSteps: string[];
 }
 
-export type OnboardingStep = 'profile' | 'macros' | 'walkthrough';
+export type OnboardingStep = 'username' | 'macros' | 'tutorial' | 'personal' | 'macros-suggested' | 'tour';
 
 // Profile and user data types
 export interface UserProfile {
+  username?: string;
   firstName?: string;
   lastName?: string;
   gender?: 'male' | 'female' | 'other' | '';
@@ -65,6 +66,8 @@ export interface UserProfile {
   age?: number;
   activityLevel?: 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extremely_active';
   fitnessGoals?: FitnessGoal[];
+  fitnessGoal?: 'lose_fat' | 'build_muscle' | 'maintain'; // Simplified fitness goal for onboarding
+  fitnessLevel?: 'beginner' | 'intermediate' | 'advanced';
 }
 
 export interface FitnessGoal {
