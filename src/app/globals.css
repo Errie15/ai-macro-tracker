@@ -221,7 +221,7 @@ html:not(.dark) body {
   }
 
   html:not(.dark) .btn-pill-secondary:focus {
-    box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.3);
+    box-shadow: 0 0 0 4px rgba(71, 85, 105, 0.3);
   }
 
   /* Large input fields */
@@ -549,6 +549,45 @@ html:not(.dark) body {
 
   .swipe-indicator.active {
     opacity: 1;
+  }
+
+  /* Input Field Styles */
+  .input-field {
+    border: 2px solid rgba(71, 85, 105, 0.2);
+    border-radius: 1rem;
+    padding: 0.875rem 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    min-height: 48px;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+  }
+
+  .input-field::placeholder {
+    color: var(--text-quaternary);
+    font-weight: 400;
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
+  }
+
+  html:not(.dark) .input-field {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(71, 85, 105, 0.2);
+    color: var(--text-primary);
+  }
+
+  html:not(.dark) .input-field:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 }
 

@@ -99,11 +99,29 @@ function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: Mac
 }
 
 export default function MacroProgress({ totalMacros, goals }: MacroProgressProps) {
+  // Provide fallback values in case goals are undefined or invalid
+  const safeGoals = {
+    protein: goals?.protein || 150,
+    carbs: goals?.carbs || 200,
+    fat: goals?.fat || 70,
+    calories: goals?.calories || 2000
+  };
+  
+  // Provide fallback values for totalMacros as well
+  const safeTotalMacros = {
+    protein: totalMacros?.protein || 0,
+    carbs: totalMacros?.carbs || 0,
+    fat: totalMacros?.fat || 0,
+    calories: totalMacros?.calories || 0
+  };
+
+  console.log('📊 MacroProgress rendering with goals:', safeGoals, 'and totals:', safeTotalMacros);
+
   const macroBlocks = [
     {
       label: 'Protein',
-      current: totalMacros.protein,
-      goal: goals.protein,
+      current: safeTotalMacros.protein,
+      goal: safeGoals.protein,
       unit: 'g',
       color: 'text-blue-400',
       bgGradient: 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20',
@@ -111,8 +129,8 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
     },
     {
       label: 'Carbs',
-      current: totalMacros.carbs,
-      goal: goals.carbs,
+      current: safeTotalMacros.carbs,
+      goal: safeGoals.carbs,
       unit: 'g',
       color: 'text-green-400',
       bgGradient: 'bg-gradient-to-br from-green-500/20 to-emerald-500/20',
@@ -120,8 +138,8 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
     },
     {
       label: 'Fat',
-      current: totalMacros.fat,
-      goal: goals.fat,
+      current: safeTotalMacros.fat,
+      goal: safeGoals.fat,
       unit: 'g',
       color: 'text-purple-400',
       bgGradient: 'bg-gradient-to-br from-purple-500/20 to-pink-500/20',
@@ -129,8 +147,8 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
     },
     {
       label: 'Calories',
-      current: totalMacros.calories,
-      goal: goals.calories,
+      current: safeTotalMacros.calories,
+      goal: safeGoals.calories,
       unit: ' kcal',
       color: 'text-orange-400',
       bgGradient: 'bg-gradient-to-br from-orange-500/20 to-red-500/20',

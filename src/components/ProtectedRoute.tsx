@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, triggerRefresh } = useAuth();
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
@@ -38,7 +38,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [user, loading]);
 
   const handleOnboardingComplete = () => {
+    console.log('🎯 Onboarding completed! Triggering data refresh...');
     setOnboardingComplete(true);
+    // Trigger refresh using the AuthContext function
+    triggerRefresh();
   };
 
   if (loading || checkingOnboarding) {

@@ -89,7 +89,19 @@ export default function OnboardingProfile({ onComplete, showReturnToMacros = fal
   }, [profile]);
 
   const handleSaveProfile = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      console.warn('❌ Profile form is not valid, cannot save:', {
+        age: profile.age,
+        gender: profile.gender,
+        height: profile.height,
+        weight: profile.weight,
+        activityLevel: profile.activityLevel,
+        fitnessGoal: profile.fitnessGoal,
+        fitnessLevel: profile.fitnessLevel,
+        isValid: isFormValid
+      });
+      return;
+    }
     
     try {
       setShowSuccess(true);
@@ -118,7 +130,9 @@ export default function OnboardingProfile({ onComplete, showReturnToMacros = fal
       }, 1500);
     } catch (error) {
       console.error('❌ Error saving profile:', error);
-      // Still proceed even if save fails
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      // Still proceed even if save fails but show alert to user
+      alert('There was an issue saving your profile. Please try again or contact support if the problem persists.');
       setTimeout(() => {
         setShowSuccess(false);
         onComplete();
@@ -193,12 +207,22 @@ export default function OnboardingProfile({ onComplete, showReturnToMacros = fal
               Age
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               min="13"
               max="120"
               value={profile.age || ''}
-              onChange={(e) => handleInputChange('age', parseInt(e.target.value) || 0)}
-              className="input-field w-full"
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, '');
+                if (value === '') {
+                  handleInputChange('age', 0);
+                } else {
+                  const numValue = parseInt(value);
+                  handleInputChange('age', numValue);
+                }
+              }}
+              className="input-field-small w-full"
               placeholder="25"
             />
           </div>
@@ -210,7 +234,7 @@ export default function OnboardingProfile({ onComplete, showReturnToMacros = fal
             <select
               value={profile.gender || ''}
               onChange={(e) => handleInputChange('gender', e.target.value)}
-              className="select-field w-full"
+              className="select-field-small w-full"
             >
               <option value="">Select Gender</option>
               <option value="male">Male</option>
@@ -225,12 +249,22 @@ export default function OnboardingProfile({ onComplete, showReturnToMacros = fal
               Height (cm)
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               min="100"
               max="250"
               value={profile.height || ''}
-              onChange={(e) => handleInputChange('height', parseInt(e.target.value) || 0)}
-              className="input-field w-full"
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, '');
+                if (value === '') {
+                  handleInputChange('height', 0);
+                } else {
+                  const numValue = parseInt(value);
+                  handleInputChange('height', numValue);
+                }
+              }}
+              className="input-field-small w-full"
               placeholder="175"
             />
           </div>
@@ -241,12 +275,22 @@ export default function OnboardingProfile({ onComplete, showReturnToMacros = fal
               Weight (kg)
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               min="30"
               max="300"
               value={profile.weight || ''}
-              onChange={(e) => handleInputChange('weight', parseInt(e.target.value) || 0)}
-              className="input-field w-full"
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, '');
+                if (value === '') {
+                  handleInputChange('weight', 0);
+                } else {
+                  const numValue = parseInt(value);
+                  handleInputChange('weight', numValue);
+                }
+              }}
+              className="input-field-small w-full"
               placeholder="70"
             />
           </div>

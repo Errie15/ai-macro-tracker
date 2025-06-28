@@ -136,27 +136,29 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
               </div>
 
               <div>
-                <label htmlFor="age" className="block text-sm font-semibold text-secondary mb-2">
-                  Age
-                </label>
+                <label className="block text-sm font-medium mb-2">Age</label>
                 <input
-                  id="age"
-                  type="number"
-                  min="1"
-                  max="120"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={profile.age || ''}
-                  onChange={(e) => handleInputChange('age', parseInt(e.target.value) || 0)}
+                                     onChange={(e) => {
+                     const value = e.target.value.replace(/[^0-9]/g, '');
+                     if (value === '') {
+                       handleInputChange('age', 0);
+                     } else {
+                       const numValue = parseInt(value);
+                       handleInputChange('age', numValue);
+                     }
+                   }}
                   className="input-field-small w-full"
                   placeholder="25"
                 />
               </div>
 
               <div>
-                <label htmlFor="gender" className="block text-sm font-semibold text-secondary mb-2">
-                  Gender
-                </label>
+                <label className="block text-sm font-medium mb-2">Gender</label>
                 <select
-                  id="gender"
                   value={profile.gender || ''}
                   onChange={(e) => handleInputChange('gender', e.target.value)}
                   className="select-field-small w-full"
@@ -169,33 +171,42 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
               </div>
 
               <div>
-                <label htmlFor="height" className="block text-sm font-semibold text-secondary mb-2">
-                  Height (cm)
-                </label>
+                <label className="block text-sm font-medium mb-2">Height (cm)</label>
                 <input
-                  id="height"
-                  type="number"
-                  min="100"
-                  max="250"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={profile.height || ''}
-                  onChange={(e) => handleInputChange('height', parseInt(e.target.value) || 0)}
+                                     onChange={(e) => {
+                     const value = e.target.value.replace(/[^0-9]/g, '');
+                     if (value === '') {
+                       handleInputChange('height', 0);
+                     } else {
+                       const numValue = parseInt(value);
+                       handleInputChange('height', numValue);
+                     }
+                   }}
                   className="input-field-small w-full"
                   placeholder="175"
                 />
               </div>
 
               <div>
-                <label htmlFor="weight" className="block text-sm font-semibold text-secondary mb-2">
-                  Weight (kg)
-                </label>
+                <label className="block text-sm font-medium mb-2">Weight (kg)</label>
                 <input
-                  id="weight"
-                  type="number"
-                  min="30"
-                  max="300"
-                  step="0.1"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={profile.weight || ''}
-                  onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
+                                     onChange={(e) => {
+                     const value = e.target.value.replace(/[^0-9]/g, '');
+                     if (value === '') {
+                       handleInputChange('weight', 0);
+                     } else {
+                       const numValue = parseInt(value);
+                       handleInputChange('weight', numValue);
+                     }
+                   }}
                   className="input-field-small w-full"
                   placeholder="70"
                 />

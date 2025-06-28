@@ -15,7 +15,7 @@ import InstallPrompt from '@/components/InstallPrompt';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshTrigger } = useAuth();
   
   const [goals, setGoals] = useState<MacroGoals>({
     calories: 2000,
@@ -95,6 +95,24 @@ export default function Home() {
 
     loadDataWhenReady();
   }, [loading, user]);
+
+  // Reload goals when onboarding completes (refreshTrigger changes)
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      console.log('🔄 Refresh trigger activated! Reloading macro goals after onboarding...');
+      const reloadGoals = async () => {
+        try {
+          const savedGoals = await getMacroGoals();
+          console.log('📊 Fresh goals loaded after onboarding:', savedGoals);
+          setGoals(savedGoals);
+          console.log('✅ Goals refreshed in UI');
+        } catch (error) {
+          console.error('❌ Error reloading goals after onboarding:', error);
+        }
+      };
+      reloadGoals();
+    }
+  }, [refreshTrigger]);
 
   // Auto-refresh at midnight to reset daily progress
   useEffect(() => {
@@ -194,10 +212,12 @@ export default function Home() {
 
   const handleGoalsUpdated = async (newGoals: MacroGoals) => {
     try {
+      console.log('🎯 Updating goals in main page:', newGoals);
       setGoals(newGoals);
       await setMacroGoals(newGoals);
+      console.log('✅ Goals updated and saved successfully');
     } catch (error) {
-      console.error('Error updating goals:', error);
+      console.error('❌ Error updating goals:', error);
     }
   };
 

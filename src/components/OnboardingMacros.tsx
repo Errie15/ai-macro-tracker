@@ -85,14 +85,38 @@ export default function OnboardingMacros({ onComplete, onNeedHelp, showHelpButto
     setIsGenerating(true);
     
     try {
+      console.log('🧠 Starting AI macro generation...');
       const profile = await getUserProfile();
+      console.log('👤 Loaded profile for AI calculation:', profile);
+      
+      // Check if profile is complete
+      const isProfileComplete = Boolean(
+        profile.age && 
+        profile.weight && 
+        profile.height && 
+        profile.gender && 
+        profile.activityLevel
+      );
+      
+      if (!isProfileComplete) {
+        console.warn('⚠️ Profile incomplete for AI calculation:', {
+          hasAge: !!profile.age,
+          hasWeight: !!profile.weight,
+          hasHeight: !!profile.height,
+          hasGender: !!profile.gender,
+          hasActivityLevel: !!profile.activityLevel
+        });
+      }
       
       // Simulate AI processing delay with realistic feel
       await new Promise(resolve => setTimeout(resolve, 2500));
       
       const aiMacros = calculateAIMacros(profile);
+      console.log('🎯 Calculated AI macros:', aiMacros);
+      
       setMacros(aiMacros);
       await setMacroGoals(aiMacros);
+      console.log('✅ AI macros saved successfully');
       
       if (showSuggested) {
         setIsComplete(true);
@@ -101,7 +125,9 @@ export default function OnboardingMacros({ onComplete, onNeedHelp, showHelpButto
         handleComplete();
       }
     } catch (error) {
-      console.error('Error generating AI macros:', error);
+      console.error('❌ Error generating AI macros:', error);
+      // Don't fail silently - show user-friendly error
+      alert('Unable to calculate personalized macros. Please ensure your profile information is complete and try again.');
     } finally {
       setIsGenerating(false);
     }

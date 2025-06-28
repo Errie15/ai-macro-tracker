@@ -1,11 +1,14 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  refreshTrigger: number;
+  triggerRefresh: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -14,81 +17,66 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    // Dynamic import to avoid undici issues
-    const initAuth = async () => {
-      try {
-        const { auth } = await import('@/lib/firebase');
-        const { onAuthStateChanged } = await import('firebase/auth');
-        
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          setUser(user);
-          setLoading(false);
-        });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
 
-        return unsubscribe;
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        setLoading(false);
-      }
-    };
-
-    initAuth();
+    return () => unsubscribe();
   }, []);
 
+  const triggerRefresh = () => {
+    console.log('🔄 Triggering refresh from AuthContext...');
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   const signIn = async (email: string, password: string) => {
-    const { auth } = await import('@/lib/firebase');
     const { signInWithEmailAndPassword } = await import('firebase/auth');
     await signInWithEmailAndPassword(auth, email, password);
   };
 
   const signUp = async (email: string, password: string) => {
-    const { auth } = await import('@/lib/firebase');
     const { createUserWithEmailAndPassword } = await import('firebase/auth');
     await createUserWithEmailAndPassword(auth, email, password);
   };
 
   const signInWithGoogle = async () => {
-    const { auth } = await import('@/lib/firebase');
     const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
   };
 
   const logout = async () => {
-    const { auth } = await import('@/lib/firebase');
     const { signOut } = await import('firebase/auth');
     await signOut(auth);
   };
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    signIn,
-    signUp,
-    signInWithGoogle,
-    logout
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      refreshTrigger, 
+      triggerRefresh,
+      signIn,
+      signUp,
+      signInWithGoogle,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 } 
