@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'AI Macro Tracker'
   },
   icons: {
@@ -25,8 +25,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5,
-  userScalable: true,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: 'cover',
   themeColor: '#22c55e'
 }
@@ -41,11 +41,54 @@ export default function RootLayout({
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="AI Macro Tracker" />
         <meta name="theme-color" content="#22c55e" />
+        <meta name="apple-touch-fullscreen" content="yes" />
+        <meta name="format-detection" content="telephone=no" />
         <link rel="apple-touch-icon" href="/icon-emoji.svg" />
         <link rel="icon" href="/icon-emoji.svg" type="image/svg+xml" />
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            /* PWA Input Field Fixes */
+            @media (display-mode: standalone) {
+              input, textarea, select {
+                font-size: 16px !important;
+                transform: translateZ(0);
+                -webkit-appearance: none;
+                -webkit-border-radius: 0;
+                border-radius: 4px;
+              }
+              
+              input:focus, textarea:focus, select:focus {
+                -webkit-user-select: text;
+                user-select: text;
+                outline: none;
+                transform: translateZ(0);
+              }
+              
+              /* Prevent iOS safari issues */
+              body {
+                -webkit-touch-callout: none;
+                -webkit-text-size-adjust: 100%;
+                -webkit-tap-highlight-color: transparent;
+              }
+              
+              /* Fix for iOS standalone input zoom */
+              @supports (-webkit-touch-callout: none) {
+                input[type="email"], 
+                input[type="password"], 
+                input[type="text"], 
+                textarea, 
+                select {
+                  font-size: 16px !important;
+                  -webkit-appearance: none;
+                  border-radius: 8px;
+                }
+              }
+            }
+          `
+        }} />
 <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -73,6 +116,25 @@ export default function RootLayout({
                     });
                 });
               }
+              
+              // PWA input focus fixes
+              document.addEventListener('DOMContentLoaded', function() {
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                             window.navigator.standalone === true;
+                             
+                if (isPWA) {
+                  console.log('🔧 Applying PWA input fixes');
+                  
+                  // Fix for input focus on iOS PWA
+                  document.addEventListener('focusin', function(e) {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                      setTimeout(function() {
+                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 300);
+                    }
+                  });
+                }
+              });
             `,
           }}
         />

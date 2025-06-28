@@ -9,17 +9,51 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isPWA, setIsPWA] = useState(false);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
-  // PWA detection for debugging
+  // PWA detection and input fixes
   useEffect(() => {
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                  (window.navigator as any).standalone === true ||
-                  document.referrer.includes('android-app://');
+    const isPWAMode = window.matchMedia('(display-mode: standalone)').matches || 
+                      (window.navigator as any).standalone === true ||
+                      document.referrer.includes('android-app://');
     
-    if (isPWA) {
-      console.log('🔧 Running in PWA mode');
+    setIsPWA(isPWAMode);
+    
+    if (isPWAMode) {
+      console.log('🔧 Running in PWA mode - applying input fixes');
+      
+      // Add PWA-specific event listeners
+      const handleInputFocus = (e: FocusEvent) => {
+        const target = e.target as HTMLInputElement;
+        if (target && (target.type === 'email' || target.type === 'password')) {
+          // Ensure input is visible and properly styled
+          target.style.transform = 'translateZ(0)';
+          target.style.webkitTransform = 'translateZ(0)';
+          
+          // Scroll into view after a short delay
+          setTimeout(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
+      };
+
+      const handleInputBlur = (e: FocusEvent) => {
+        const target = e.target as HTMLInputElement;
+        if (target) {
+          target.style.transform = '';
+          target.style.webkitTransform = '';
+        }
+      };
+
+      document.addEventListener('focusin', handleInputFocus);
+      document.addEventListener('focusout', handleInputBlur);
+
+      return () => {
+        document.removeEventListener('focusin', handleInputFocus);
+        document.removeEventListener('focusout', handleInputBlur);
+      };
     } else {
       console.log('🌐 Running in browser mode');
     }
@@ -55,6 +89,11 @@ export default function SignIn() {
     }
   };
 
+  // PWA-optimized input class
+  const inputClass = `w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+    isPWA ? 'text-base' : ''
+  }`;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
@@ -81,12 +120,21 @@ export default function SignIn() {
             <input
               type="email"
               id="email"
+              name="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              style={{ fontSize: '16px' }}
+              className={inputClass}
+              style={{ 
+                fontSize: '16px',
+                WebkitAppearance: 'none',
+                WebkitBorderRadius: '8px'
+              }}
               placeholder="Enter your email"
               autoComplete="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck="false"
+              inputMode="email"
               required
             />
           </div>
@@ -98,12 +146,20 @@ export default function SignIn() {
             <input
               type="password"
               id="password"
+              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              style={{ fontSize: '16px' }}
+              className={inputClass}
+              style={{ 
+                fontSize: '16px',
+                WebkitAppearance: 'none',
+                WebkitBorderRadius: '8px'
+              }}
               placeholder="Enter your password"
               autoComplete="current-password"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck="false"
               required
               minLength={6}
             />
@@ -113,6 +169,7 @@ export default function SignIn() {
             type="submit"
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            style={{ fontSize: '16px' }}
           >
             {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
           </button>
@@ -123,6 +180,7 @@ export default function SignIn() {
             onClick={handleGoogleSignIn}
             disabled={loading}
             className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            style={{ fontSize: '16px' }}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

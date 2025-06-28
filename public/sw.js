@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ai-macro-tracker-v2-pwa-fix';
+const CACHE_NAME = 'ai-macro-tracker-v3-input-fixes';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -15,11 +15,13 @@ const EXCLUDED_URLS = [
 ];
 
 self.addEventListener('install', (event) => {
-  console.log('🔧 Installing SW with PWA input fixes');
+  console.log('🔧 Installing SW v3 with input field fixes');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
   );
+  // Skip waiting to activate immediately
+  self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -45,7 +47,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('🔧 Activating SW with PWA input fixes');
+  console.log('🔧 Activating SW v3 with input field fixes');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -58,4 +60,6 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  // Claim all clients immediately
+  return self.clients.claim();
 }); 
