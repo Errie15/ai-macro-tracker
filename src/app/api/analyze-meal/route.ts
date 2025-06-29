@@ -5,56 +5,105 @@ import { FOOD_DATABASE, searchFoodDatabase, FoodDatabaseItem } from '@/lib/food-
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
 
 // Generate dynamic system prompt with food database
-function generateSystemPrompt(foodDatabase: FoodDatabaseItem[]): string {
-  const validatedFoodsList = foodDatabase
-    .filter(food => food.verified)
-    .slice(0, 200)
-    .map(food => 
-      `${food.name} (per ${food.serving.amount}${food.serving.unit}): ${food.macros.protein}g protein, ${food.macros.carbs}g carbs, ${food.macros.fat}g fat, ${food.macros.calories} kcal`
-    )
-    .join('\n');
+function generateSystemPrompt(mealDescription: string): string {
+  // Dynamic database search - get only relevant foods for this meal
+  const relevantFoods = searchFoodDatabase(mealDescription, 10);
+  
+  const contextualFoodDatabase = relevantFoods.length > 0 
+    ? relevantFoods.map(food => 
+        `${food.name} (per ${food.serving.amount}${food.serving.unit}): ${food.macros.protein}g protein, ${food.macros.carbs}g carbs, ${food.macros.fat}g fat, ${food.macros.calories} kcal`
+      ).join('\n')
+    : 'No specific database matches found for this meal.';
 
   return `
-You are a nutrition analyst. Analyze meals using the food database and calculate accurate macros.
+You are a strict and consistent nutrition calculator AI.
+You never hallucinate. You base all estimates on either the food database or scientifically validated nutritional standards.
+Every answer must follow these rules EXACTLY.
 
-FOOD DATABASE:
-${validatedFoodsList}
+RULES (CRITICAL - FOLLOW EXACTLY):
+1. NEVER ignore any food mentioned in the meal description – estimate quantity if unclear, but never omit an item
+2. Convert volumes to weight when needed: 3dl ice cream ≈ 180g, 1 glass wine ≈ 150ml, 1 cup ≈ 240ml
+3. Use the food database match exactly when available – do not alter macros for database foods. If no match is found, estimate based on common nutrition values and justify assumptions
+4. Adjust portions using: (requested_amount / database_serving_amount) × macros_per_serving. Round macros to nearest gram. Total calories must remain within ±5 kcal of calculated macro sum
+5. For alcohol: Total calories = (volume_ml × ABV × 0.789 × 7) + sugar_calories. ALWAYS include alcohol calories in beer and wine, even if protein/carb/fat macros appear low
+6. For branded meals (McDonald's, Subway): use real nutritional data, not conservative estimates
+7. For premium/branded foods (Ben & Jerry's, Häagen-Dazs, Snickers): if no flavor specified, use upper bound of common variants (~300 kcal/100g for ice cream)
+8. For volume measurements: convert using average density – "2 dl ice cream" → 120g, "3 dl" → 180g
+9. For non-alcohol: Calories = (protein×4) + (carbs×4) + (fat×9)
+10. Sum all individual food items for totals – breakdown item calories MUST equal total_calories (±5 maximum) – NO EXCEPTIONS
+11. If an estimated kcal/100g is used (e.g. 300 kcal/100g for ice cream), then total_calories = (grams × kcal/100g ÷ 100) must match exactly
+12. Alcoholic drinks contain alcohol calories but NO FAT unless explicitly described ingredients justify it (cream, coconut milk, egg yolk)
+13. If meal contains high-fat ingredients (cheese, cream, sauce, meat), total fat must reflect cumulative fat contributions from all sources
+14. Use real-world product averages for branded items (Guinness ~210 kcal/568ml, Monster Energy ~220 kcal/500ml)
+15. Final macro totals must match breakdown calculations exactly (±5 calories maximum)
+16. Output ONLY a JSON object – no text outside JSON
+17. Use standard food knowledge when database lacks specific items
+18. For sugar-sweetened beverages (e.g. soda, juice, cocktails), total carbohydrate grams × 4 must equal the sugar calorie portion within ±5 kcal. Example: 50g carbs = 200 kcal from sugar
+19. Alcohol-derived calories must equal: (volume_ml × ABV × 0.789 × 7). Any added sugar must be added to this. Total_calories = alcohol_kcal + sugar_kcal ±5. Example: 150ml wine 12.5% = 103 kcal alcohol + sugar = total
+20. Breakdown item calories MUST sum to total calories (±5) — this is enforced server-side. AI must double-check its own totals before responding
+21. Alcoholic drinks never contain protein unless explicitly described ingredients justify it (e.g. egg white, milk, cream). Do NOT assign protein to pure alcohol (rum, vodka, etc)
 
-RULES:
-1. Find foods in the database that match the meal description
-2. Scale portions if needed: (requested_amount / database_amount) × database_macros
-3. For alcohol: Add alcohol calories = volume(ml) × ABV% × 0.789 × 7
-4. Sum all foods: total_protein, total_carbs, total_fat, total_calories
-5. Your JSON output numbers must match your reasoning calculations exactly
+CONTEXTUAL FOOD DATABASE (use if relevant):
+${contextualFoodDatabase}
 
-BASIC MATH:
-- 2 shots × 4cl each = 8cl = 80ml
-- 3 shots × 4cl each = 12cl = 120ml
-- 1 cl = 10ml
+CRITICAL EXAMPLES (avoid these mistakes):
+❌ WRONG: "Guinness 568ml" → 76 kcal (missing all alcohol calories)
+✅ CORRECT: Guinness 568ml × 4.2% ABV × 0.789 × 7 = 186 kcal alcohol + sugar = ~210 kcal total
 
-ALCOHOL DETECTION:
-- beer, wine, vodka, whiskey, rum, gin, tequila, cocktails = alcoholic
-- For alcoholic items: use calculated calories (includes alcohol)
-- For non-alcoholic: calories = (protein×4) + (carbs×4) + (fat×9)
+❌ WRONG: "White wine 150ml" → 100 kcal but alcohol(99) + sugar(8) = 107 kcal
+✅ CORRECT: Total calories must equal alcohol_calories + sugar_calories exactly
 
-JSON FORMAT:
+❌ WRONG: "Filmjölk bowl" → breakdown (102+170+90=362) but reports 330 kcal total
+✅ CORRECT: Total must equal breakdown sum within ±5 kcal - NO EXCEPTIONS
+
+❌ WRONG: "Häagen-Dazs 240g" → claims 300 kcal/100g but reports 438 kcal instead of 720 kcal
+✅ CORRECT: If using kcal/100g estimate, total = (grams × kcal/100g ÷ 100) exactly
+
+❌ WRONG: "3 Gin & Tonics" → 18g fat (fat doesn't exist in G&Ts)
+✅ CORRECT: Alcoholic drinks have 0g fat unless cream/coconut explicitly mentioned
+
+❌ WRONG: "Red wine 150ml 12.5%" → 100 kcal (should be 103 alcohol + 8 sugar = 111 kcal)
+✅ CORRECT: Alcohol calories must be exact: volume × ABV × 0.789 × 7 + sugar calories
+
+❌ WRONG: "Piña Colada" → 2g protein from rum (rum has no protein)
+✅ CORRECT: Pure alcohol (rum, vodka) = 0g protein unless cream/egg explicitly mentioned
+
+❌ WRONG: "Beef burrito" → breakdown sums 960 kcal but reports 710 kcal total
+✅ CORRECT: ALWAYS double-check that breakdown sum equals total_calories ±5
+
+❌ WRONG: "Fanta 500ml" → 25g carbs but 210 kcal (impossible without alcohol)
+✅ CORRECT: Sugar calories must match carbs: 25g carbs × 4 = 100 kcal from sugar
+
+❌ WRONG: "2 dl Ben & Jerry's" → 252 kcal (too conservative for premium brand)
+✅ CORRECT: Ben & Jerry's 120g × 300 kcal/100g = ~360 kcal (use upper bound)
+
+❌ WRONG: "3 dl glass + 1 liter läsk" → only counting the soda (ignoring ice cream)
+✅ CORRECT: Include both items: ice cream 3dl ≈ 180g ≈ 250 kcal, soda 1L ≈ 420 kcal
+
+❌ WRONG: "1 mojito" → 28 kcal (ignoring sugar content)
+✅ CORRECT: Mojito ≈ 250ml with rum + sugar + lime ≈ 160 kcal
+
+❌ WRONG: "Big Mac Meal" → 525 kcal (too conservative)
+✅ CORRECT: Big Mac Meal (burger + fries + drink) ≈ 1100 kcal
+
+OUTPUT FORMAT (respond with ONLY this JSON structure):
 {
   "protein": <total grams>,
-  "carbs": <total grams>, 
+  "carbs": <total grams>,
   "fat": <total grams>,
-  "calories": <total calories including alcohol>,
+  "calories": <total calories>,
   "breakdown": [
     {
-      "food": "<exact database name>",
-      "estimatedAmount": "<amount>",
+      "food": "<food name>",
+      "estimatedAmount": "<amount with unit>",
       "protein": <grams>,
       "carbs": <grams>,
       "fat": <grams>,
       "calories": <calories>
     }
   ],
-  "reasoning": "<show your calculations>",
-  "validation": "<confirm totals match calculations>"
+  "reasoning": "<explain portion estimates and calculations>",
+  "validation": "<confirm macro totals match breakdown>"
 }
 `;
 }
@@ -91,14 +140,14 @@ export async function POST(request: NextRequest) {
     const model = genAI.getGenerativeModel({ 
       model: "gemini-1.5-flash",
       generationConfig: {
-        temperature: 0.1, // Low temperature for more consistent/deterministic responses
+        temperature: 0, // Maximum determinism - completely deterministic responses
         topK: 1,
         topP: 0.1,
       }
     });
 
     // Generate system prompt with current food database
-    const systemPrompt = generateSystemPrompt(FOOD_DATABASE);
+    const systemPrompt = generateSystemPrompt(mealDescription);
     
         // Create enhanced prompt for recalculation
     const recalculationInstructions = isRecalculation ? `
