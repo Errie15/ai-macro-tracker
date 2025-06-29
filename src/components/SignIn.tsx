@@ -11,6 +11,7 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [showIOSPWAHelp, setShowIOSPWAHelp] = useState(false);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
@@ -34,6 +35,18 @@ export default function SignIn() {
     const pending = sessionStorage.getItem('google_auth_pending') || localStorage.getItem('google_auth_pending');
     if (pending) {
       debugData.push(`⏳ Pending Google Auth: ${pending}`);
+      
+      // Check timestamp to see how long it's been pending
+      const timestamp = localStorage.getItem('google_auth_timestamp');
+      if (timestamp) {
+        const minutes = Math.floor((Date.now() - parseInt(timestamp)) / (1000 * 60));
+        debugData.push(`⏰ Auth pending for: ${minutes} minutes`);
+        
+        // Show iOS PWA help if it's been pending for more than 1 minute
+        if (isPWA && isIOS && minutes > 1) {
+          setShowIOSPWAHelp(true);
+        }
+      }
     }
     
     // Check for URL parameters
@@ -48,6 +61,8 @@ export default function SignIn() {
     const cleanup = setTimeout(() => {
       sessionStorage.removeItem('google_auth_pending');
       localStorage.removeItem('google_auth_pending');
+      sessionStorage.removeItem('google_auth_timestamp');
+      localStorage.removeItem('google_auth_timestamp');
       sessionStorage.removeItem('pre_auth_url');
       localStorage.removeItem('pre_auth_url');
     }, 5 * 60 * 1000);
@@ -100,11 +115,26 @@ export default function SignIn() {
     console.log('🚀 Starting Google sign-in...');
     setError('');
     setGoogleLoading(true);
+    setShowIOSPWAHelp(false);
     
     try {
       console.log('📞 Calling signInWithGoogle...');
       await signInWithGoogle();
       console.log('✅ Google sign-in call completed');
+      
+      // For iOS PWA, set up help display after delay
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                    (window.navigator as any).standalone === true;
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      if (isPWA && isIOS) {
+        setTimeout(() => {
+          const stillPending = localStorage.getItem('google_auth_pending');
+          if (stillPending) {
+            setShowIOSPWAHelp(true);
+          }
+        }, 10000); // Show help after 10 seconds
+      }
     } catch (error: any) {
       console.error('❌ Google sign-in error:', error);
       console.error('Error code:', error.code);
@@ -139,10 +169,17 @@ export default function SignIn() {
   const clearDebugFlags = () => {
     sessionStorage.removeItem('google_auth_pending');
     localStorage.removeItem('google_auth_pending');
+    sessionStorage.removeItem('google_auth_timestamp');
+    localStorage.removeItem('google_auth_timestamp');
     sessionStorage.removeItem('pre_auth_url');
     localStorage.removeItem('pre_auth_url');
     console.log('🧹 Debug flags cleared');
     window.location.reload();
+  };
+
+  const refreshApp = () => {
+    console.log('🔄 Manual app refresh triggered');
+    window.location.href = window.location.origin;
   };
 
   return (
@@ -179,6 +216,63 @@ export default function SignIn() {
             {isLogin ? 'Sign in to your account' : 'Get started with your account'}
           </p>
         </div>
+
+        {/* iOS PWA Help */}
+        {showIOSPWAHelp && (
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '1px solid #93c5fd',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <h3 style={{
+              color: '#1d4ed8',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              marginBottom: '8px'
+            }}>
+              📱 iOS PWA Sign-in Help
+            </h3>
+            <p style={{
+              color: '#1e40af',
+              fontSize: '13px',
+              marginBottom: '12px',
+              lineHeight: '1.4'
+            }}>
+              If you are stuck after signing in with Google, try manually refreshing the app by tapping the button below.
+            </p>
+            <button
+              onClick={refreshApp}
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                marginRight: '8px'
+              }}
+            >
+              🔄 Refresh App
+            </button>
+            <button
+              onClick={() => setShowIOSPWAHelp(false)}
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Debug Info */}
         {debugInfo.length > 0 && (
