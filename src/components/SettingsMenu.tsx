@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, X, Target, Globe, Sun, Moon, User, LogOut, HelpCircle } from 'lucide-react';
+import { Settings, X, Target, Globe, Sun, Moon, User, LogOut, HelpCircle, Key } from 'lucide-react';
 import { MacroGoals, UserProfile } from '@/types';
 import GoalsSettings from './GoalsSettings';
 import ProfileSettings from './ProfileSettings';
@@ -25,8 +25,19 @@ export default function SettingsMenu({
   const [isOpen, setIsOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({});
   const { user, logout } = useAuth();
+
+  // Change password form state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -50,6 +61,67 @@ export default function SettingsMenu({
       closeMenu();
     } catch (error) {
       console.error('Error logging out:', error);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters');
+      return;
+    }
+
+    setPasswordError('');
+    setPasswordSuccess('');
+    setPasswordLoading(true);
+
+    try {
+      const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import('firebase/auth');
+      const { auth } = await import('@/lib/firebase');
+      
+      if (!auth.currentUser || !user?.email) {
+        throw new Error('No authenticated user found');
+      }
+
+      // Re-authenticate user first
+      const credential = EmailAuthProvider.credential(user.email, passwordForm.currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+
+      // Update password
+      await updatePassword(auth.currentUser, passwordForm.newPassword);
+
+      setPasswordSuccess('Password updated successfully!');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      
+      // Close modal after success
+      setTimeout(() => {
+        setShowChangePassword(false);
+        setPasswordSuccess('');
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      let errorMessage = 'Failed to change password';
+      
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Current password is incorrect';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'New password is too weak';
+      } else if (error.code === 'auth/requires-recent-login') {
+        errorMessage = 'Please sign out and sign back in, then try again';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setPasswordError(errorMessage);
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -166,6 +238,20 @@ export default function SettingsMenu({
                 <span className="text-sm text-secondary">Edit →</span>
               </button>
 
+              {/* Change Password Button */}
+              {user && !user.isAnonymous && (
+                <button
+                  onClick={() => setShowChangePassword(true)}
+                  className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors tap-effect"
+                >
+                  <div className="flex items-center gap-3">
+                    <Key className="w-5 h-5 text-secondary" />
+                    <span className="font-medium text-primary">Change Password</span>
+                  </div>
+                  <span className="text-sm text-secondary">Update →</span>
+                </button>
+              )}
+
               {/* Help/Onboarding Button */}
               <button
                 onClick={() => setShowOnboarding(true)}
@@ -208,6 +294,106 @@ export default function SettingsMenu({
           </div>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowChangePassword(false)} />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="glass-card-strong w-full max-w-md p-6 rounded-3xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-primary">Change Password</h3>
+                <button
+                  onClick={() => setShowChangePassword(false)}
+                  className="btn-pill-secondary w-10 h-10 p-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Success Message */}
+              {passwordSuccess && (
+                <div className="mb-4 p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                  <p className="text-green-400 text-sm font-medium">{passwordSuccess}</p>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {passwordError && (
+                <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <p className="text-red-400 text-sm font-medium">{passwordError}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-primary mb-2">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => {
+                      setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }));
+                      setPasswordError('');
+                    }}
+                    className="input-field-small w-full"
+                    placeholder="Enter current password"
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-primary mb-2">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => {
+                      setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }));
+                      setPasswordError('');
+                    }}
+                    className="input-field-small w-full"
+                    placeholder="Enter new password"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-primary mb-2">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => {
+                      setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }));
+                      setPasswordError('');
+                    }}
+                    className="input-field-small w-full"
+                    placeholder="Confirm new password"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="btn-pill-primary w-full mt-6"
+                >
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Profile Settings Modal */}
       {showProfile && (

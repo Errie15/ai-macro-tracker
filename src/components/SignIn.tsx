@@ -48,14 +48,16 @@ export default function SignIn() {
         errorMessage = 'No account found with this email';
       } else if (error.code === 'auth/wrong-password') {
         errorMessage = 'Incorrect password';
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'Incorrect email or password. Please check your credentials and try again.';
       } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'Email is already registered';
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'Password should be at least 6 characters';
       } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address';
+        errorMessage = 'Please enter a valid email address';
       } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many attempts. Please try again later.';
+        errorMessage = 'Too many failed attempts. Please try again later.';
       } else if (error.message) {
         errorMessage = error.message;
       }
