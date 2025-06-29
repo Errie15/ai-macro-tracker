@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignIn() {
@@ -10,8 +10,50 @@ export default function SignIn() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
+
+  // Debug information gathering
+  useEffect(() => {
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  (window.navigator as any).standalone === true ||
+                  document.referrer.includes('android-app://');
+    
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    const debugData = [
+      `🔧 PWA Mode: ${isPWA}`,
+      `📱 iOS Device: ${isIOS}`,
+      `🌐 Current URL: ${window.location.href}`,
+      `🏠 Origin: ${window.location.origin}`,
+      `📊 User Agent: ${navigator.userAgent.substring(0, 50)}...`
+    ];
+    
+    // Check for pending auth
+    const pending = sessionStorage.getItem('google_auth_pending') || localStorage.getItem('google_auth_pending');
+    if (pending) {
+      debugData.push(`⏳ Pending Google Auth: ${pending}`);
+    }
+    
+    // Check for URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.toString()) {
+      debugData.push(`📝 URL Params: ${urlParams.toString()}`);
+    }
+    
+    setDebugInfo(debugData);
+    
+    // Auto-clear old debugging flags after 5 minutes
+    const cleanup = setTimeout(() => {
+      sessionStorage.removeItem('google_auth_pending');
+      localStorage.removeItem('google_auth_pending');
+      sessionStorage.removeItem('pre_auth_url');
+      localStorage.removeItem('pre_auth_url');
+    }, 5 * 60 * 1000);
+    
+    return () => clearTimeout(cleanup);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +104,7 @@ export default function SignIn() {
     try {
       console.log('📞 Calling signInWithGoogle...');
       await signInWithGoogle();
-      console.log('✅ Google sign-in completed successfully');
+      console.log('✅ Google sign-in call completed');
     } catch (error: any) {
       console.error('❌ Google sign-in error:', error);
       console.error('Error code:', error.code);
@@ -92,6 +134,15 @@ export default function SignIn() {
 
   const clearError = () => {
     if (error) setError('');
+  };
+
+  const clearDebugFlags = () => {
+    sessionStorage.removeItem('google_auth_pending');
+    localStorage.removeItem('google_auth_pending');
+    sessionStorage.removeItem('pre_auth_url');
+    localStorage.removeItem('pre_auth_url');
+    console.log('🧹 Debug flags cleared');
+    window.location.reload();
   };
 
   return (
@@ -128,6 +179,42 @@ export default function SignIn() {
             {isLogin ? 'Sign in to your account' : 'Get started with your account'}
           </p>
         </div>
+
+        {/* Debug Info */}
+        {debugInfo.length > 0 && (
+          <details style={{
+            backgroundColor: '#f3f4f6',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            padding: '12px',
+            marginBottom: '20px',
+            fontSize: '12px'
+          }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '8px' }}>
+              🔧 Debug Information
+            </summary>
+            {debugInfo.map((info, index) => (
+              <div key={index} style={{ marginBottom: '4px', fontFamily: 'monospace' }}>
+                {info}
+              </div>
+            ))}
+            <button
+              onClick={clearDebugFlags}
+              style={{
+                marginTop: '8px',
+                padding: '4px 8px',
+                fontSize: '10px',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Clear Debug Flags & Reload
+            </button>
+          </details>
+        )}
 
         {/* Error Message */}
         {error && (

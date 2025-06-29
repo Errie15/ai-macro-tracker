@@ -24,6 +24,11 @@ const isPWA = () => {
          document.referrer.includes('android-app://');
 };
 
+// Function to detect iOS
+const isIOS = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,19 +44,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         console.log('🔍 Checking for Google redirect result...');
+        console.log('📱 Current URL:', window.location.href);
+        console.log('🔧 Is PWA mode:', isPWA());
+        console.log('📱 Is iOS:', isIOS());
+        
         const { getRedirectResult } = await import('firebase/auth');
         const result = await getRedirectResult(auth);
         
         if (result) {
           console.log('✅ Google login redirect successful:', result.user.email);
           console.log('🔧 User signed in via redirect:', result.user.displayName);
+          
+          // Clear any pending auth flags
+          sessionStorage.removeItem('google_auth_pending');
+          localStorage.removeItem('google_auth_pending');
+          
+          // Force a refresh to ensure the app updates
+          console.log('🔄 Forcing app refresh after successful auth');
+          window.location.reload();
         } else {
           console.log('ℹ️ No redirect result found');
+          
+          // Check if we were expecting a redirect
+          const pending = sessionStorage.getItem('google_auth_pending') || localStorage.getItem('google_auth_pending');
+          if (pending) {
+            console.log('⚠️ Was expecting a redirect result but none found');
+            console.log('🔍 Checking URL parameters...');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasAuthParams = urlParams.has('code') || urlParams.has('state') || urlParams.has('error');
+            
+            if (hasAuthParams) {
+              console.log('📝 Found auth parameters in URL:', Object.fromEntries(urlParams.entries()));
+            } else {
+              console.log('❌ No auth parameters found in URL');
+            }
+          }
         }
       } catch (error: any) {
         console.error('❌ Google login redirect error:', error);
         console.error('Error code:', error.code);
         console.error('Error message:', error.message);
+        
+        // Clear pending flags on error
+        sessionStorage.removeItem('google_auth_pending');
+        localStorage.removeItem('google_auth_pending');
         
         // Handle specific redirect errors
         if (error.code === 'auth/popup-closed-by-user' || 
@@ -74,8 +111,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    // Check redirect result
+    // Check redirect result immediately and after a delay (for iOS PWA)
     checkRedirectResult();
+    
+    // Additional check after a delay for iOS PWA mode
+    if (isPWA() && isIOS()) {
+      console.log('📱 iOS PWA detected - setting up delayed redirect check');
+      setTimeout(() => {
+        console.log('⏰ Running delayed redirect check for iOS PWA');
+        checkRedirectResult();
+      }, 1000);
+    }
 
     return () => unsubscribe();
   }, []);
@@ -107,23 +153,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     const pwaMode = isPWA();
-    console.log('🚀 Starting Google sign-in in mode:', pwaMode ? 'PWA (redirect)' : 'Browser (popup)');
+    const iosDevice = isIOS();
+    
+    console.log('🚀 Starting Google sign-in...');
+    console.log('🔧 PWA mode:', pwaMode);
+    console.log('📱 iOS device:', iosDevice);
+    console.log('🌐 Current URL:', window.location.href);
+    console.log('🏠 Origin:', window.location.origin);
     
     if (pwaMode) {
       console.log('🔄 Using redirect flow for PWA mode');
       const { signInWithRedirect } = await import('firebase/auth');
       
-      // Store that we're attempting a redirect
+      // Store that we're attempting a redirect (use both storage types for iOS)
       sessionStorage.setItem('google_auth_pending', 'true');
+      localStorage.setItem('google_auth_pending', 'true');
+      
+      // Store the current URL to help with debugging
+      sessionStorage.setItem('pre_auth_url', window.location.href);
+      localStorage.setItem('pre_auth_url', window.location.href);
       
       try {
+        console.log('📤 Initiating redirect...');
         await signInWithRedirect(auth, provider);
-        // Note: signInWithRedirect doesn't return a result immediately
-        // The result is handled in the redirect callback
         console.log('✅ Redirect initiated successfully');
+        
+        // For iOS PWA, we might need to handle this differently
+        if (iosDevice) {
+          console.log('📱 iOS PWA redirect initiated - user should return automatically');
+        }
       } catch (error: any) {
         console.error('❌ Redirect initiation failed:', error);
         sessionStorage.removeItem('google_auth_pending');
+        localStorage.removeItem('google_auth_pending');
+        sessionStorage.removeItem('pre_auth_url');
+        localStorage.removeItem('pre_auth_url');
         throw error;
       }
     } else {
