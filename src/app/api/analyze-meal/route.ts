@@ -212,6 +212,8 @@ export async function POST(request: NextRequest) {
       "validation": "Totals match macro calculations: (35×4)+(28×4)+(6×9)=294 kcal"
     }`;
 
+
+
     console.log('🤖 Sending request to OpenAI...');
     
     const response = await client.chat.completions.create({

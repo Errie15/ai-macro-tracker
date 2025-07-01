@@ -438,7 +438,7 @@ export default function SettingsMenu({
                   <div className="glass-card-compact">
                     <h4 className="font-semibold text-primary mb-2">🎤 Can I use voice input?</h4>
                     <p className="text-secondary text-sm">
-                      Yes! Click the microphone icon in the meal input field and speak your meal description. Make sure to allow microphone access when prompted by your browser.
+                      Yes! Click the microphone icon in the meal input field and speak your meal description. Uses OpenAI Whisper for highly accurate speech recognition. Make sure to allow microphone access when prompted by your browser.
                     </p>
                   </div>
                 </div>

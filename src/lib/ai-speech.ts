@@ -53,7 +53,7 @@ export class AIAudioRecorder {
       // Set up voice activity detection if callback provided
       if (onSilenceDetected) {
         try {
-          this.voiceDetector = new VoiceActivityDetector(30, 1500); // 30 volume threshold, 1.5s silence
+          this.voiceDetector = new VoiceActivityDetector(30, 200); // 30 volume threshold, 0.2s silence
           await this.voiceDetector.start(this.stream, onSilenceDetected);
           console.log('🎤 Voice activity detection enabled');
         } catch (vadError) {
@@ -125,7 +125,7 @@ export class AIAudioRecorder {
 }
 
 // Convert audio to text using AI
-export async function transcribeAudio(audioBlob: Blob): Promise<SpeechResult> {
+export async function transcribeAudio(audioBlob: Blob, language: string = 'auto'): Promise<SpeechResult> {
   try {
     console.log('🎤 Starting AI transcription...');
     
@@ -140,7 +140,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<SpeechResult> {
       },
       body: JSON.stringify({
         audio: base64Audio,
-        language: 'en-US',
+        language: language, // Now supports 'auto', 'en-US', 'sv-SE', etc.
         format: 'webm'
       }),
     });

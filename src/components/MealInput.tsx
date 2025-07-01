@@ -7,22 +7,38 @@ import { addMeal } from '@/lib/storage';
 import { MealEntry } from '@/types';
 import { AIAudioRecorder, transcribeAudio } from '@/lib/ai-speech';
 
-// Convert written numbers to digits
+// Convert written numbers to digits (supports English and Swedish)
 const convertNumbersToDigits = (text: string): string => {
   const numberWords: { [key: string]: string } = {
+    // English numbers
     'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4', 
     'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
     'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13', 
     'fourteen': '14', 'fifteen': '15', 'sixteen': '16', 'seventeen': '17',
     'eighteen': '18', 'nineteen': '19', 'twenty': '20', 'thirty': '30',
     'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70',
-    'eighty': '80', 'ninety': '90', 'hundred': '100', 'thousand': '1000'
+    'eighty': '80', 'ninety': '90', 'hundred': '100', 'thousand': '1000',
+    // Swedish numbers
+    'noll': '0', 'ett': '1', 'en': '1', 'två': '2', 'tre': '3', 'fyra': '4',
+    'fem': '5', 'sex': '6', 'sju': '7', 'åtta': '8', 'nio': '9',
+    'tio': '10', 'elva': '11', 'tolv': '12', 'tretton': '13',
+    'fjorton': '14', 'femton': '15', 'sexton': '16', 'sjutton': '17',
+    'arton': '18', 'nitton': '19', 'tjugo': '20', 'trettio': '30',
+    'fyrtio': '40', 'femtio': '50', 'sextio': '60', 'sjuttio': '70',
+    'åttio': '80', 'nittio': '90', 'hundra': '100', 'tusen': '1000'
   };
 
   let result = text;
   
-  // Handle compound numbers like "twenty five" -> "25"
+  // Handle English compound numbers like "twenty five" -> "25"
   result = result.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\s+(one|two|three|four|five|six|seven|eight|nine)\b/gi, (match, tens, ones) => {
+    const tensNum = numberWords[tens.toLowerCase()] || tens;
+    const onesNum = numberWords[ones.toLowerCase()] || ones;
+    return (parseInt(tensNum) + parseInt(onesNum)).toString();
+  });
+
+  // Handle Swedish compound numbers like "tjugo fem" -> "25"
+  result = result.replace(/\b(tjugo|trettio|fyrtio|femtio|sextio|sjuttio|åttio|nittio)\s+(ett|en|två|tre|fyra|fem|sex|sju|åtta|nio)\b/gi, (match, tens, ones) => {
     const tensNum = numberWords[tens.toLowerCase()] || tens;
     const onesNum = numberWords[ones.toLowerCase()] || ones;
     return (parseInt(tensNum) + parseInt(onesNum)).toString();
@@ -35,8 +51,21 @@ const convertNumbersToDigits = (text: string): string => {
     return (hundredsNum + remainderNum).toString();
   });
 
+  // Handle "X hundra Y" -> "XY0" (e.g., "ett hundra femtio" -> "150")
+  result = result.replace(/\b(ett|en|två|tre|fyra|fem|sex|sju|åtta|nio)\s+hundra\s+(tjugo|trettio|fyrtio|femtio|sextio|sjuttio|åttio|nittio|tio|elva|tolv|tretton|fjorton|femton|sexton|sjutton|arton|nitton)\b/gi, (match, hundreds, remainder) => {
+    const hundredsNum = parseInt(numberWords[hundreds.toLowerCase()] || hundreds) * 100;
+    const remainderNum = parseInt(numberWords[remainder.toLowerCase()] || remainder);
+    return (hundredsNum + remainderNum).toString();
+  });
+
   // Handle simple "X hundred" -> "X00"
   result = result.replace(/\b(one|two|three|four|five|six|seven|eight|nine)\s+hundred\b/gi, (match, num) => {
+    const numValue = numberWords[num.toLowerCase()] || num;
+    return (parseInt(numValue) * 100).toString();
+  });
+
+  // Handle simple "X hundra" -> "X00"
+  result = result.replace(/\b(ett|en|två|tre|fyra|fem|sex|sju|åtta|nio)\s+hundra\b/gi, (match, num) => {
     const numValue = numberWords[num.toLowerCase()] || num;
     return (parseInt(numValue) * 100).toString();
   });
@@ -58,7 +87,7 @@ interface MealInputProps {
 export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   const [mealText, setMealText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+
   const [isAIRecording, setIsAIRecording] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'down' | 'left' | 'right' | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -111,127 +140,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     }
   };
 
-  const startVoiceInput = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser. Please try Chrome or Edge.');
-      return;
-    }
 
-    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser. Please try Chrome or Edge.');
-      return;
-    }
-    
-    const recognition = new SpeechRecognition();
-    
-    // Enhanced settings for better English recognition
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    
-    // Try to set additional properties for better recognition (if supported)
-    try {
-      (recognition as any).serviceURI = undefined; // Use default service
-    } catch (e) {
-      // Property not supported, continue
-    }
-    
-    // Add timeout to prevent hanging
-    const timeoutId = setTimeout(() => {
-      recognition.stop();
-      setIsListening(false);
-      console.log('🎤 Voice recognition timed out after 10 seconds');
-    }, 10000);
-
-    recognition.onstart = () => {
-      console.log('🎤 Voice recognition started (English - en-US)');
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event) => {
-      clearTimeout(timeoutId);
-      console.log('🎤 Voice recognition results received:', event.results);
-      
-      // Get the best result
-      const results = Array.from(event.results[0]);
-      const bestResult = results[0];
-      const transcript = bestResult.transcript;
-      const confidence = bestResult.confidence;
-      
-      console.log(`🎤 Best result: "${transcript}" (confidence: ${(confidence * 100).toFixed(1)}%)`);
-      
-      // Show all alternatives in console for debugging
-      if (results.length > 1) {
-        console.log('🎤 Alternative results:');
-        results.slice(1).forEach((result, index) => {
-          console.log(`   ${index + 2}. "${result.transcript}" (confidence: ${(result.confidence * 100).toFixed(1)}%)`);
-        });
-      }
-      
-      // Always use the result regardless of confidence (Web Speech API confidence is unreliable)
-      // Convert number words to digits for consistency
-      const processedTranscript = convertNumbersToDigits(transcript);
-      console.log(`🎤 Original: "${transcript}" -> Processed: "${processedTranscript}"`);
-      
-      const currentText = mealText.trim();
-      const newText = currentText ? `${currentText} ${processedTranscript}` : processedTranscript;
-      setMealText(newText);
-      console.log(`🎤 Added to meal text: "${processedTranscript}" (confidence: ${(confidence * 100).toFixed(1)}%)`);
-      
-      // Log confidence for debugging but don't block the result
-      if (confidence < 0.5) {
-        console.log('🎤 Note: Low confidence from Web Speech API, but still using result');
-      }
-    };
-
-    recognition.onerror = (event) => {
-      clearTimeout(timeoutId);
-      console.error('🎤 Voice recognition error:', event.error);
-      setIsListening(false);
-      
-      let errorMessage = 'Speech recognition error. ';
-      switch (event.error) {
-        case 'no-speech':
-          errorMessage += 'No speech detected. Please try again.';
-          break;
-        case 'audio-capture':
-          errorMessage += 'Microphone problem. Please check your microphone.';
-          break;
-        case 'not-allowed':
-          errorMessage += 'Microphone access denied. Please allow microphone in your browser.';
-          break;
-        case 'network':
-          errorMessage += 'Network error. Please check your internet connection.';
-          break;
-        case 'service-not-allowed':
-          errorMessage += 'Speech recognition service is not available.';
-          break;
-        default:
-          errorMessage += `Unknown error: ${event.error}`;
-      }
-      alert(errorMessage);
-    };
-
-    recognition.onend = () => {
-      clearTimeout(timeoutId);
-      console.log('🎤 Voice recognition ended');
-      setIsListening(false);
-    };
-
-    // Request microphone permission first
-    navigator.mediaDevices?.getUserMedia({ audio: true })
-      .then(() => {
-        console.log('🎤 Starting voice recognition with enhanced English settings');
-        recognition.start();
-      })
-      .catch((error) => {
-        console.error('🎤 Microphone permission denied:', error);
-        alert('Microphone access is required for speech recognition. Please allow microphone access in your browser and try again.');
-      });
-  };
 
   const startAIVoiceInput = async () => {
     try {
@@ -310,7 +219,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       }
     } catch (error) {
       console.error('🎤 AI transcription error:', error);
-      alert('AI transcription failed. Please try the regular microphone (red) or type manually.');
+      alert('AI transcription failed. Please try again or type manually.');
     } finally {
       setIsAIRecording(false);
       
@@ -417,28 +326,14 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               
               <button
                 type="button"
-                onClick={startVoiceInput}
-                disabled={isAnalyzing || isListening || isAIRecording}
-                className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
-                  isListening ? 'bg-red-500/20 border-red-400/30' : ''
-                }`}
-                title="Voice input (Web Speech API)"
-              >
-                <Mic className={`w-5 h-5 ${
-                  isListening ? 'text-red-400 animate-pulse' : ''
-                }`} />
-              </button>
-
-              <button
-                type="button"
                 onClick={isAIRecording ? stopAIVoiceInput : startAIVoiceInput}
-                disabled={isAnalyzing || isListening}
+                disabled={isAnalyzing}
                 className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
                   isAIRecording ? 'bg-blue-500/20 border-blue-400/30' : ''
                 }`}
-                title="AI Voice input (Google Gemini)"
+                title="AI Voice input (OpenAI Whisper) - English/Swedish"
               >
-                <AudioWaveform className={`w-5 h-5 ${
+                <Mic className={`w-5 h-5 ${
                   isAIRecording ? 'text-blue-400 animate-pulse' : ''
                 }`} />
               </button>
@@ -480,33 +375,17 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
         </form>
       </div>
 
-      {/* Voice Feedback */}
-      {isListening && (
-        <div className="glass-card bg-red-500/20 border-red-400/30 animate-scale-in">
-          <div className="flex items-center justify-center gap-3 text-red-300">
-            <div className="relative">
-              <Mic className="w-6 h-6" />
-              <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-30" />
-            </div>
-            <div>
-              <p className="font-bold text-lg">Listening...</p>
-              <p className="text-sm opacity-80">Speak now to describe your meal</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* AI Recording Feedback */}
       {isAIRecording && (
         <div className="glass-card bg-blue-500/20 border-blue-400/30 animate-scale-in">
           <div className="flex items-center justify-center gap-3 text-blue-300">
             <div className="relative">
-              <AudioWaveform className="w-6 h-6" />
+              <Mic className="w-6 h-6" />
               <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-30" />
             </div>
             <div className="flex-1">
-              <p className="font-bold text-lg">AI Recording...</p>
-              <p className="text-sm opacity-80">Powered by Google Gemini • Smart silence detection</p>
+              <p className="font-bold text-lg">Recording...</p>
+              <p className="text-sm opacity-80">Powered by OpenAI Whisper • English/Swedish • Auto-detection</p>
             </div>
             <button
               onClick={stopAIVoiceInput}
