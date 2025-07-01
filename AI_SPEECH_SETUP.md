@@ -21,7 +21,7 @@ Your macro tracker now supports two speech recognition options:
 ## 🚀 AI Speech Recognition Status
 
 ### ✅ **Already Ready!**
-Your AI speech recognition is already configured and ready to use! Since you have `NEXT_PUBLIC_GEMINI_API_KEY` in your `.env.local` file, the blue waveform button will use Google Gemini for transcription.
+Your AI speech recognition is already configured and ready to use! Since you have `OPENAI_API_KEY` in your `.env.local` file, the blue waveform button will use OpenAI Whisper for transcription.
 
 ### 🎯 **No Setup Required**
 - Your existing Gemini API key works for speech recognition

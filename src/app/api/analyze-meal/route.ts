@@ -1,8 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { NextRequest, NextResponse } from 'next/server';
 import { FOOD_DATABASE, searchFoodDatabase, FoodDatabaseItem } from '@/lib/food-database';
 
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // Generate dynamic system prompt with food database
 function generateSystemPrompt(mealDescription: string): string {
@@ -111,10 +113,10 @@ OUTPUT FORMAT (respond with ONLY this JSON structure):
 export async function POST(request: NextRequest) {
   try {
     // Check API key
-    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-      console.error('❌ API key missing');
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ OpenAI API key missing');
       return NextResponse.json(
-        { error: 'API key missing' },
+        { error: 'OpenAI API key missing' },
         { status: 500 }
       );
     }
@@ -135,21 +137,12 @@ export async function POST(request: NextRequest) {
       console.log('🔄 RECALCULATION MODE: Seeking enhanced accuracy');
       console.log('📊 Previous result:', previousResult);
     }
-    console.log('🤖 Using AI model: gemini-1.5-flash');
-
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      generationConfig: {
-        temperature: 0, // Maximum determinism - completely deterministic responses
-        topK: 1,
-        topP: 0.1,
-      }
-    });
+    console.log('🤖 Using AI model: gpt-4o-mini');
 
     // Generate system prompt with current food database
     const systemPrompt = generateSystemPrompt(mealDescription);
     
-        // Create enhanced prompt for recalculation
+    // Create enhanced prompt for recalculation
     const recalculationInstructions = isRecalculation ? `
     
     RECALCULATION MODE: The user wants more accurate results.
@@ -162,8 +155,7 @@ export async function POST(request: NextRequest) {
     - Only return same result if 100% certain
     ` : '';
 
-    const prompt = `
-    ${systemPrompt}
+    const userPrompt = `
     ${recalculationInstructions}
     
     Analyze the following meal description and provide accurate nutritional estimates with validation.
@@ -199,55 +191,68 @@ export async function POST(request: NextRequest) {
       "fat": 6, 
       "calories": 294,
       "breakdown": [
-        {"food": "Grilled chicken breast", "estimatedAmount": "150g", "protein": 31, "carbs": 0, "fat": 5, "calories": 165},
-        {"food": "Cooked white rice", "estimatedAmount": "100g", "protein": 4, "carbs": 28, "fat": 1, "calories": 130}
-      ],
-      "reasoning": "Used standard nutrition values for lean chicken breast and cooked rice. Chicken: ~165kcal/100g, Rice: ~130kcal/100g",
-      "validation": "Totals realistic: 35g protein appropriate for 150g chicken + rice, 294 calories matches macro calculation (35×4 + 28×4 + 6×9 = 298kcal)"
-    }
-    `;
-
-    console.log('📤 Sending enhanced analysis request to AI...');
-    const startTime = Date.now();
-    
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    const processingTime = Date.now() - startTime;
-    console.log(`⏱️ AI processing completed in ${processingTime}ms`);
-    console.log('📥 Raw AI response:', text);
-
-    // Clean and parse JSON response
-    const cleanedText = text.trim().replace(/```json|```/g, '').trim();
-    
-    let parsedData;
-    try {
-      parsedData = JSON.parse(cleanedText);
-      console.log('✅ Successfully parsed AI response');
-    } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError);
-      console.error('🔍 Attempted to parse:', cleanedText);
-      
-      // Try to extract JSON from text with regex as fallback
-      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          parsedData = JSON.parse(jsonMatch[0]);
-          console.log('✅ Successfully parsed JSON using regex fallback');
-        } catch (fallbackError) {
-          console.error('❌ Regex fallback also failed:', fallbackError);
-          throw new Error('Could not parse AI response as JSON');
+        {
+          "food": "Grilled chicken breast",
+          "estimatedAmount": "150g",
+          "protein": 31,
+          "carbs": 0,
+          "fat": 4,
+          "calories": 165
+        },
+        {
+          "food": "Cooked white rice",
+          "estimatedAmount": "100g",
+          "protein": 4,
+          "carbs": 28,
+          "fat": 2,
+          "calories": 129
         }
-      } else {
-        throw new Error('Could not extract valid JSON from AI response');
-      }
+      ],
+      "reasoning": "Standard portion sizes used. Chicken breast is lean protein, rice provides carbs.",
+      "validation": "Totals match macro calculations: (35×4)+(28×4)+(6×9)=294 kcal"
+    }`;
+
+    console.log('🤖 Sending request to OpenAI...');
+    
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user", 
+          content: userPrompt
+        }
+      ],
+      temperature: 0,
+      max_tokens: 2000,
+    });
+
+    const result = response.choices[0].message.content;
+    console.log('🤖 OpenAI response:', result);
+
+    if (!result) {
+      throw new Error('No response from OpenAI');
+    }
+
+    // Parse JSON response
+    let parsedResult;
+    try {
+      // Remove any markdown formatting if present
+      const cleanResult = result.replace(/```json\n?|\n?```/g, '').trim();
+      parsedResult = JSON.parse(cleanResult);
+    } catch (parseError) {
+      console.error('❌ Failed to parse OpenAI response:', parseError);
+      console.error('Raw response:', result);
+      throw new Error('Invalid JSON response from OpenAI');
     }
 
     // STRICT validation and sanitization - prioritize scientific accuracy
-    const protein = Math.max(0, Math.round(parsedData.protein || 0));
-    const carbs = Math.max(0, Math.round(parsedData.carbs || 0));
-    const fat = Math.max(0, Math.round(parsedData.fat || 0));
+    const protein = Math.max(0, Math.round(parsedResult.protein || 0));
+    const carbs = Math.max(0, Math.round(parsedResult.carbs || 0));
+    const fat = Math.max(0, Math.round(parsedResult.fat || 0));
     
     // Check if this is alcoholic beverage by looking at meal description and food breakdown
     const mealLower = mealDescription.toLowerCase();
@@ -255,13 +260,13 @@ export async function POST(request: NextRequest) {
                        mealLower.includes('whiskey') || mealLower.includes('rum') || mealLower.includes('gin') ||
                        mealLower.includes('cocktail') || mealLower.includes('alcohol') || mealLower.includes('champagne') ||
                        mealLower.includes('mojito') || mealLower.includes('margarita') || mealLower.includes('tequila') ||
-                       (parsedData.breakdown && parsedData.breakdown.some((item: any) => 
+                       (parsedResult.breakdown && parsedResult.breakdown.some((item: any) => 
                          item.food?.toLowerCase().includes('beer') || item.food?.toLowerCase().includes('wine') ||
                          item.food?.toLowerCase().includes('vodka') || item.food?.toLowerCase().includes('alcohol')
                        ));
     
     const calculatedCalories = Math.round((protein * 4) + (carbs * 4) + (fat * 9));
-    const aiCalories = Math.max(0, Math.round(parsedData.calories || 0));
+    const aiCalories = Math.max(0, Math.round(parsedResult.calories || 0));
     
     // Always use AI calories - trust the AI analysis for all items
     const calories = aiCalories;
@@ -276,7 +281,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate and correct breakdown items - preserve alcohol calories for alcoholic items
-    const validatedBreakdown = (parsedData.breakdown || []).map((item: any, index: number) => {
+    const validatedBreakdown = (parsedResult.breakdown || []).map((item: any, index: number) => {
       const itemProtein = Math.max(0, Math.round(item.protein || 0));
       const itemCarbs = Math.max(0, Math.round(item.carbs || 0));
       const itemFat = Math.max(0, Math.round(item.fat || 0));
@@ -316,8 +321,8 @@ export async function POST(request: NextRequest) {
       fat,
       calories,
       breakdown: validatedBreakdown,
-      reasoning: parsedData.reasoning || 'No reasoning provided',
-      validation: parsedData.validation || 'No validation provided',
+      reasoning: parsedResult.reasoning || 'No reasoning provided',
+      validation: parsedResult.validation || 'No validation provided',
     };
 
     console.log('📊 ==================== DETAILED BREAKDOWN ====================');

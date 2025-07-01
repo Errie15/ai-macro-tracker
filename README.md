@@ -31,7 +31,7 @@ Din personliga AI-assistent för hälsosam kost med modern glassmorphism-design 
    
    Skapa en `.env.local` fil i projektets rot:
    ```env
-   NEXT_PUBLIC_GEMINI_API_KEY=din_gemini_api_nyckel_här
+   OPENAI_API_KEY=your_openai_api_key_here
    NEXT_PUBLIC_USDA_API_KEY=din_usda_api_nyckel_här
    ```
    
