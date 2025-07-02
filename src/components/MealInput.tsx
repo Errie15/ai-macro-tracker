@@ -187,19 +187,14 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     } catch (error) {
       console.error('🎤 Failed to start AI recording:', error);
       setIsAIRecording(false);
-      setShowWebSpeechFallback(true); // Show fallback option
       
-      let errorMessage = 'AI recording failed. ';
-      if (error instanceof Error) {
-        if (error.message.includes('not supported')) {
-          errorMessage += 'Your device may not support this feature. ';
-        } else if (error.message.includes('permissions')) {
-          errorMessage += 'Please allow microphone access. ';
-        }
+      // Only show fallback for permission issues, not other errors
+      if (error instanceof Error && error.message.includes('permissions')) {
+        setShowWebSpeechFallback(true);
       }
-      errorMessage += 'Try the red microphone button below for an alternative.';
       
-      alert(errorMessage);
+      // Just log errors, don't annoy user with alerts
+      console.log('🎤 AI recording start failed, but not showing alert to user');
     }
   };
 
@@ -225,18 +220,17 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
         audioBlob = await aiRecorderRef.current.stopRecording();
         console.log('🎤 Successfully stopped recording, got blob size:', audioBlob.size);
         
-        // Check if we got valid audio data
+        // Check if we got valid audio data - but don't show error, just log
         if (!audioBlob || audioBlob.size === 0) {
-          console.warn('🎤 No audio data captured');
-          alert('No audio was recorded. Please try again and speak clearly.');
+          console.warn('🎤 No audio data captured, skipping transcription');
           return;
         }
       } catch (stopError) {
         console.error('🎤 Unexpected error stopping recording:', stopError);
         setIsAIRecording(false);
         
-        // Should be rare now that we handle "already stopped" gracefully
-        alert('Recording failed. Please try again or use manual input.');
+        // Just log the error, don't annoy user with alerts
+        console.log('🎤 Recording stop had issues, but continuing silently');
         return;
       }
       
@@ -258,27 +252,20 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
         // Reset fallback state on successful transcription
         setShowWebSpeechFallback(false);
       } else {
-        alert('No speech detected. Please try again.');
-        setShowWebSpeechFallback(true); // Show fallback option
+        // Just log, don't show annoying alert
+        console.log('🎤 No speech detected in transcription, but not showing error to user');
+        // Don't automatically show fallback - let user decide
       }
     } catch (error) {
       console.error('🎤 AI transcription error:', error);
-      setShowWebSpeechFallback(true); // Show fallback option
       
-      // More user-friendly error messages
-      let errorMessage = 'AI transcription failed. ';
-      if (error instanceof Error) {
-        if (error.message.includes('format') || error.message.includes('not supported')) {
-          errorMessage += 'Your device may not support this audio format. ';
-        } else if (error.message.includes('permissions') || error.message.includes('microphone')) {
-          errorMessage += 'Please check your microphone permissions. ';
-        } else if (error.message.includes('network') || error.message.includes('quota')) {
-          errorMessage += 'Please check your internet connection. ';
-        }
+      // Just log the error - don't show annoying popups to user
+      console.log('🎤 Transcription failed, but not bothering user with alerts');
+      
+      // Only show fallback if it's a real technical issue, not just failed transcription
+      if (error instanceof Error && error.message.includes('network')) {
+        setShowWebSpeechFallback(true);
       }
-      errorMessage += 'Try the red microphone button below for an alternative.';
-      
-      alert(errorMessage);
     } finally {
       setIsAIRecording(false);
       
@@ -342,7 +329,8 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
           const newText = currentText ? `${currentText} ${processedTranscript}` : processedTranscript;
           setMealText(newText);
         } else {
-          alert('No speech detected. Please try again.');
+          // Just log, don't show alert
+          console.log('🎤 Web Speech: No speech detected, but not showing alert');
         }
         
         setIsWebSpeechRecording(false);
@@ -352,25 +340,12 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
         console.error('🎤 Web Speech recognition error:', event.error);
         setIsWebSpeechRecording(false);
         
-        let errorMessage = 'Speech recognition failed. ';
-        switch (event.error) {
-          case 'no-speech':
-            errorMessage += 'No speech detected. Please try again.';
-            break;
-          case 'audio-capture':
-            errorMessage += 'Microphone access failed. Please check your permissions.';
-            break;
-          case 'not-allowed':
-            errorMessage += 'Microphone permission denied. Please allow access and try again.';
-            break;
-          case 'network':
-            errorMessage += 'Network error. Please check your connection.';
-            break;
-          default:
-            errorMessage += 'Please try again or use the blue AI microphone instead.';
+        // Just log errors, don't show alerts unless it's a permission issue
+        if (event.error === 'not-allowed') {
+          alert('Microphone permission needed. Please allow access and try again.');
+        } else {
+          console.log('🎤 Web Speech error:', event.error, '- not showing alert to user');
         }
-        
-        alert(errorMessage);
       };
 
       recognition.onend = () => {
@@ -386,18 +361,12 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       console.error('🎤 Failed to start Web Speech recording:', error);
       setIsWebSpeechRecording(false);
       
-      let errorMessage = 'Failed to start speech recognition. ';
-      if (error instanceof Error) {
-        if (error.message.includes('not supported')) {
-          errorMessage += 'Your browser doesn\'t support speech recognition. Try the blue AI microphone instead.';
-        } else if (error.message.includes('permissions')) {
-          errorMessage += 'Please allow microphone access and try again.';
-        } else {
-          errorMessage += 'Please try the blue AI microphone or type manually.';
-        }
+      // Only show alert for permission issues
+      if (error instanceof Error && error.message.includes('permissions')) {
+        alert('Please allow microphone access and try again.');
+      } else {
+        console.log('🎤 Web Speech start failed, but not showing alert to user');
       }
-      
-      alert(errorMessage);
     }
   };
 
