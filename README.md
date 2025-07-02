@@ -205,3 +205,29 @@ Utmanningar : Notiser, ta reda på hur man gör det(Erik H)
 USP: Håller koll på users vikt och ger rekomendationer om ändring av dagliga macrosmål baserat på userns specifika data och mål. 
 
 
+AI Modeller: 
+ Tillgängliga AI-modeller:
+GPT-4o-mini ⚡ (nuvarande)
+Hastighet: Snabbast
+Kostnad: Billigast
+Precision: Mycket bra för nutrition
+Bäst för: Snabba, vardagliga meals
+GPT-4o 🚀
+Hastighet: Lite långsammare
+Kostnad: ~10x dyrare
+Precision: Bästa möjliga
+Bäst för: Komplexa meals, restaurang-rätter
+GPT-3.5-turbo 💰
+Hastighet: Snabb
+Kostnad: Billigast av alla
+Precision: Okej men mindre tillförlitlig
+⚙️ Vill du ändra modell?
+Jag kan lätt ändra så du kan:
+Alternativ 1: Fast modell - byt till GPT-4o för bästa precision
+Alternativ 2: Dynamisk - låt dig välja modell i appen (t.ex. en dropdown i settings)
+Alternativ 3: Smart - använd GPT-4o-mini för enkla meals, GPT-4o för komplexa
+💡 Min rekommendation:
+GPT-4o-mini är perfekt för ditt use case - snabb, billig och mycket bra på nutrition. Men om du vill ha absolut bästa precision för komplexa måltider, kan vi byta till GPT-4o.
+Vad föredrar du? Behålla GPT-4o-mini för hastighet/kostnad, eller vill du ha precision med GPT-4o?
+
+

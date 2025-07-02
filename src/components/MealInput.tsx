@@ -89,11 +89,14 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const [isAIRecording, setIsAIRecording] = useState(false);
+  const [isWebSpeechRecording, setIsWebSpeechRecording] = useState(false);
+  const [showWebSpeechFallback, setShowWebSpeechFallback] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'down' | 'left' | 'right' | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const aiRecorderRef = useRef<AIAudioRecorder | null>(null);
   const aiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const webSpeechRef = useRef<SpeechRecognition | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +171,19 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     } catch (error) {
       console.error('🎤 Failed to start AI recording:', error);
       setIsAIRecording(false);
-      alert('Failed to start AI recording. Please check microphone permissions.');
+      setShowWebSpeechFallback(true); // Show fallback option
+      
+      let errorMessage = 'AI recording failed. ';
+      if (error instanceof Error) {
+        if (error.message.includes('not supported')) {
+          errorMessage += 'Your device may not support this feature. ';
+        } else if (error.message.includes('permissions')) {
+          errorMessage += 'Please allow microphone access. ';
+        }
+      }
+      errorMessage += 'Try the red microphone button below for an alternative.';
+      
+      alert(errorMessage);
     }
   };
 
@@ -214,12 +229,31 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
         const newText = currentText ? `${currentText} ${processedTranscript}` : processedTranscript;
         setMealText(newText);
         console.log('🎤 AI transcription added to meal text:', processedTranscript);
+        
+        // Reset fallback state on successful transcription
+        setShowWebSpeechFallback(false);
       } else {
         alert('No speech detected. Please try again.');
+        setShowWebSpeechFallback(true); // Show fallback option
       }
     } catch (error) {
       console.error('🎤 AI transcription error:', error);
-      alert('AI transcription failed. Please try again or type manually.');
+      setShowWebSpeechFallback(true); // Show fallback option
+      
+      // More user-friendly error messages
+      let errorMessage = 'AI transcription failed. ';
+      if (error instanceof Error) {
+        if (error.message.includes('format') || error.message.includes('not supported')) {
+          errorMessage += 'Your device may not support this audio format. ';
+        } else if (error.message.includes('permissions') || error.message.includes('microphone')) {
+          errorMessage += 'Please check your microphone permissions. ';
+        } else if (error.message.includes('network') || error.message.includes('quota')) {
+          errorMessage += 'Please check your internet connection. ';
+        }
+      }
+      errorMessage += 'Try the red microphone button below for an alternative.';
+      
+      alert(errorMessage);
     } finally {
       setIsAIRecording(false);
       
@@ -241,6 +275,113 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     }
     
     await handleAIRecordingStop();
+  };
+
+  // Web Speech API functions (fallback/alternative)
+  const startWebSpeechInput = async () => {
+    try {
+      setIsWebSpeechRecording(true);
+      console.log('🎤 Starting Web Speech API...');
+
+      // Check if Web Speech API is supported
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        throw new Error('Web Speech API not supported in this browser');
+      }
+
+      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+      if (!SpeechRecognition) {
+        throw new Error('Speech recognition not available');
+      }
+      webSpeechRef.current = new SpeechRecognition();
+
+      const recognition = webSpeechRef.current;
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 3;
+
+      recognition.onstart = () => {
+        console.log('🎤 Web Speech recognition started');
+      };
+
+      recognition.onresult = (event) => {
+        console.log('🎤 Web Speech recognition result received');
+        const results = Array.from(event.results[0]);
+        const bestResult = results[0];
+        
+        if (bestResult && bestResult.transcript.trim()) {
+          const processedTranscript = convertNumbersToDigits(bestResult.transcript);
+          console.log('🎤 Web Speech transcript:', processedTranscript);
+          
+          const currentText = mealText.trim();
+          const newText = currentText ? `${currentText} ${processedTranscript}` : processedTranscript;
+          setMealText(newText);
+        } else {
+          alert('No speech detected. Please try again.');
+        }
+        
+        setIsWebSpeechRecording(false);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('🎤 Web Speech recognition error:', event.error);
+        setIsWebSpeechRecording(false);
+        
+        let errorMessage = 'Speech recognition failed. ';
+        switch (event.error) {
+          case 'no-speech':
+            errorMessage += 'No speech detected. Please try again.';
+            break;
+          case 'audio-capture':
+            errorMessage += 'Microphone access failed. Please check your permissions.';
+            break;
+          case 'not-allowed':
+            errorMessage += 'Microphone permission denied. Please allow access and try again.';
+            break;
+          case 'network':
+            errorMessage += 'Network error. Please check your connection.';
+            break;
+          default:
+            errorMessage += 'Please try again or use the blue AI microphone instead.';
+        }
+        
+        alert(errorMessage);
+      };
+
+      recognition.onend = () => {
+        console.log('🎤 Web Speech recognition ended');
+        setIsWebSpeechRecording(false);
+      };
+
+      // Request microphone permission and start
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      recognition.start();
+
+    } catch (error) {
+      console.error('🎤 Failed to start Web Speech recording:', error);
+      setIsWebSpeechRecording(false);
+      
+      let errorMessage = 'Failed to start speech recognition. ';
+      if (error instanceof Error) {
+        if (error.message.includes('not supported')) {
+          errorMessage += 'Your browser doesn\'t support speech recognition. Try the blue AI microphone instead.';
+        } else if (error.message.includes('permissions')) {
+          errorMessage += 'Please allow microphone access and try again.';
+        } else {
+          errorMessage += 'Please try the blue AI microphone or type manually.';
+        }
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  const stopWebSpeechInput = () => {
+    console.log('🎤 Stopping Web Speech recognition...');
+    if (webSpeechRef.current) {
+      webSpeechRef.current.stop();
+    }
+    setIsWebSpeechRecording(false);
   };
 
   const clearInput = () => {
@@ -324,17 +465,35 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
                 </button>
               )}
               
+              {/* Web Speech API Button (Red) - Only show as fallback */}
+              {showWebSpeechFallback && (
+                <button
+                  type="button"
+                  onClick={isWebSpeechRecording ? stopWebSpeechInput : startWebSpeechInput}
+                  disabled={isAnalyzing || isAIRecording}
+                  className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
+                    isWebSpeechRecording ? 'bg-red-500/20 border-red-400/30' : ''
+                  }`}
+                  title="Web Speech API - Fallback option (Chrome/Edge recommended)"
+                >
+                  <Mic className={`w-5 h-5 ${
+                    isWebSpeechRecording ? 'text-red-400 animate-pulse' : 'text-red-400'
+                  }`} />
+                </button>
+              )}
+              
+              {/* AI Voice Input Button (Blue) - Primary option */}
               <button
                 type="button"
                 onClick={isAIRecording ? stopAIVoiceInput : startAIVoiceInput}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || isWebSpeechRecording}
                 className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
                   isAIRecording ? 'bg-blue-500/20 border-blue-400/30' : ''
                 }`}
-                title="AI Voice input (OpenAI Whisper) - English/Swedish"
+                title="AI Voice input (OpenAI Whisper) - Primary voice input"
               >
                 <Mic className={`w-5 h-5 ${
-                  isAIRecording ? 'text-blue-400 animate-pulse' : ''
+                  isAIRecording ? 'text-blue-400 animate-pulse' : 'text-blue-400'
                 }`} />
               </button>
             </div>
@@ -375,6 +534,40 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
         </form>
       </div>
 
+      {/* Fallback notification */}
+      {showWebSpeechFallback && !isWebSpeechRecording && !isAIRecording && (
+        <div className="glass-card bg-amber-500/10 border-amber-400/20 animate-scale-in">
+          <div className="flex items-center gap-3 text-amber-300">
+            <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+            <p className="text-sm">
+              <span className="font-semibold">Alternative available:</span> Try the red microphone button for Web Speech API
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Web Speech API Recording Feedback - Only show when using fallback */}
+      {isWebSpeechRecording && showWebSpeechFallback && (
+        <div className="glass-card bg-red-500/20 border-red-400/30 animate-scale-in">
+          <div className="flex items-center justify-center gap-3 text-red-300">
+            <div className="relative">
+              <Mic className="w-6 h-6" />
+              <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-30" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-lg">Listening...</p>
+              <p className="text-sm opacity-80">Web Speech API • Fallback mode • Speak clearly</p>
+            </div>
+            <button
+              onClick={stopWebSpeechInput}
+              className="btn-pill-secondary px-3 py-1 text-sm tap-effect"
+            >
+              Stop
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* AI Recording Feedback */}
       {isAIRecording && (
         <div className="glass-card bg-blue-500/20 border-blue-400/30 animate-scale-in">
@@ -385,7 +578,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
             </div>
             <div className="flex-1">
               <p className="font-bold text-lg">Recording...</p>
-              <p className="text-sm opacity-80">Powered by OpenAI Whisper • English/Swedish • Auto-detection</p>
+              <p className="text-sm opacity-80">Powered by OpenAI Whisper • Mobile-optimized • Auto-stop</p>
             </div>
             <button
               onClick={stopAIVoiceInput}

@@ -9,49 +9,55 @@ interface FoodItem {
   grams?: number;
 }
 
+interface QuantityInfo {
+  hasExplicitQuantities: boolean;
+  extractedQuantities: { item: string; quantity: string }[];
+}
+
 /**
- * Enhanced meal analysis that checks for previously saved meals first, then uses AI
+ * Enhanced meal analysis that prevents cross-meal contamination
+ * CRITICAL RULE: Never override explicit quantities from current input
  */
 export async function analyzeEnhancedMeal(mealDescription: string): Promise<AIResponse> {
   try {
     console.log('🔍 Starting enhanced meal analysis for:', mealDescription);
 
-    // First, check if we have analyzed this exact meal before
-    const previousMeal = await findPreviousMeal(mealDescription);
-    if (previousMeal) {
-      console.log('🎯 Found previous analysis for this meal, using saved values for consistency');
-      console.log(`📋 Previous meal: "${previousMeal.originalText}"`);
-      console.log(`🔄 Reusing values: P:${previousMeal.macros.protein}g C:${previousMeal.macros.carbs}g F:${previousMeal.macros.fat}g Kcal:${previousMeal.macros.calories}`);
-      return {
-        protein: previousMeal.macros.protein,
-        carbs: previousMeal.macros.carbs,
-        fat: previousMeal.macros.fat,
-        calories: previousMeal.macros.calories,
-        breakdown: previousMeal.breakdown || [],
-        reasoning: previousMeal.reasoning || 'Using previously saved analysis for consistency',
-        validation: previousMeal.validation || 'Values from previous analysis',
-        confidence: 0.95, // High confidence for previously saved data
-      };
+    // STEP 1: Check if current input has explicit quantities
+    const quantityInfo = analyzeQuantities(mealDescription);
+    console.log('📏 Quantity analysis:', quantityInfo);
+
+    // STEP 2: Only check for previous meals if NO explicit quantities in current input
+    if (!quantityInfo.hasExplicitQuantities) {
+      console.log('🔍 No explicit quantities found - checking for previous similar meals...');
+      const previousMeal = await findPreviousMeal(mealDescription, quantityInfo);
+      
+      if (previousMeal) {
+        console.log('🎯 Found previous analysis for vague description, using saved values');
+        console.log(`📋 Previous meal: "${previousMeal.originalText}"`);
+        console.log(`🔄 Reusing values: P:${previousMeal.macros.protein}g C:${previousMeal.macros.carbs}g F:${previousMeal.macros.fat}g Kcal:${previousMeal.macros.calories}`);
+        return {
+          protein: previousMeal.macros.protein,
+          carbs: previousMeal.macros.carbs,
+          fat: previousMeal.macros.fat,
+          calories: previousMeal.macros.calories,
+          breakdown: previousMeal.breakdown || [],
+          reasoning: `Using previously saved analysis for similar vague description: "${previousMeal.originalText}"`,
+          validation: 'Values from previous analysis of similar meal',
+          confidence: 0.90,
+        };
+      }
+    } else {
+      console.log('⚠️ EXPLICIT QUANTITIES DETECTED - Using current input only, ignoring previous meals');
+      console.log('📊 Current quantities:', quantityInfo.extractedQuantities);
     }
 
-    // If no previous meal found, extract foods for logging (USDA search disabled)
-    const extractedFoods = await extractFoodsFromDescription(mealDescription);
-    console.log('🔍 Original description:', mealDescription);
-    console.log('🥘 Extracted foods:', extractedFoods);
-
-    // USDA search is completely disabled - skip to AI analysis
-    for (const food of extractedFoods) {
-      console.log(`🔎 Searching USDA data for: ${food.name} (${food.grams}g)`);
-      console.log(`❌ No USDA data found for: ${food.name} (USDA disabled)`);
-    }
-
-    // Use AI estimation directly
-    console.log('🤖 Falling back to AI estimation');
+    // STEP 3: Use AI analysis with strict quantity preservation
+    console.log('🤖 Proceeding with AI analysis (respecting current input quantities)');
     const aiResult = await analyzeMeal(mealDescription);
     
     return {
       ...aiResult,
-      confidence: aiResult.confidence || 0.6, // Lower precision for AI estimation
+      confidence: quantityInfo.hasExplicitQuantities ? 0.85 : 0.70,
       breakdown: aiResult.breakdown,
       reasoning: aiResult.reasoning,
       validation: aiResult.validation,
@@ -59,41 +65,104 @@ export async function analyzeEnhancedMeal(mealDescription: string): Promise<AIRe
 
   } catch (error) {
     console.error('Error in enhanced meal analysis:', error);
-    
-    // Re-throw the error instead of falling back to standard AI to prevent zero-value meals
     throw error;
   }
 }
 
 /**
- * Find a previously analyzed meal with similar description
+ * Analyze if the meal description contains explicit quantities
+ * CRITICAL: This determines whether we can reuse previous meals or not
  */
-async function findPreviousMeal(description: string) {
+function analyzeQuantities(description: string): QuantityInfo {
+  const extractedQuantities: { item: string; quantity: string }[] = [];
+  
+  // Patterns that indicate explicit quantities (comprehensive, multi-language)
+  const explicitQuantityPatterns = [
+    // Weight measurements: "100g", "150 grams", "2.5 kg"
+    /(\d+(?:\.\d+)?)\s*(?:g|gram|grams|kg|kilo|kilograms?)\s+([a-zA-ZäöåæøÅÄÖ\s]+)/gi,
+    /([a-zA-ZäöåæøÅÄÖ\s]+)\s+(\d+(?:\.\d+)?)\s*(?:g|gram|grams|kg|kilo|kilograms?)/gi,
+    
+    // Volume measurements: "250ml", "2 liters", "1 cup", "3 tablespoons"
+    /(\d+(?:\.\d+)?)\s*(?:ml|mL|cl|dl|l|liter|liters?|cups?|tbsp|tablespoons?|tsp|teaspoons?|msk|tsk)\s+([a-zA-ZäöåæøÅÄÖ\s]+)/gi,
+    /([a-zA-ZäöåæøÅÄÖ\s]+)\s+(\d+(?:\.\d+)?)\s*(?:ml|mL|cl|dl|l|liter|liters?|cups?|tbsp|tablespoons?|tsp|teaspoons?|msk|tsk)/gi,
+    
+    // Count-based quantities - UNIVERSAL PATTERN (any number + any word)
+    // This catches "2 bananer", "3 äpplen", "5 crackers", etc.
+    /(\d+(?:\.\d+)?)\s+([a-zA-ZäöåæøÅÄÖ]+(?:\w+)?)/gi,
+    
+    // Serving sizes: "1 serving", "2 portions", "half a portion"
+    /(\d+(?:\.\d+)?|half|quarter|halv|kvart)\s+(?:servings?|portions?|portioner?)\s+(?:of\s+|av\s+)?([a-zA-ZäöåæøÅÄÖ\s]+)/gi,
+    
+    // Container-based with numbers: "2 glasses of milk", "3 bowls of rice", "1 glas mjölk"
+    /(\d+(?:\.\d+)?)\s+(?:glasses?|bowls?|plates?|cups?|glas|skål|tallrik|kopp)\s+(?:of\s+|av\s+)?([a-zA-ZäöåæøÅÄÖ\s]+)/gi,
+  ];
+
+  let hasExplicit = false;
+  
+  for (const pattern of explicitQuantityPatterns) {
+    let match;
+    while ((match = pattern.exec(description)) !== null) {
+      hasExplicit = true;
+      
+      // Handle different match formats
+      if (match[1] && match[2]) {
+        // First number/quantity, then food item
+        const quantity = match[1];
+        const item = match[2].trim();
+        extractedQuantities.push({ item, quantity });
+        console.log(`📏 Found explicit quantity: ${quantity} ${item}`);
+      }
+    }
+    pattern.lastIndex = 0; // Reset regex
+  }
+
+  return {
+    hasExplicitQuantities: hasExplicit,
+    extractedQuantities
+  };
+}
+
+/**
+ * Find a previously analyzed meal - ONLY for vague descriptions without explicit quantities
+ * CRITICAL: This should never override explicit quantities from current input
+ */
+async function findPreviousMeal(description: string, quantityInfo: QuantityInfo) {
   try {
+    // SAFETY CHECK: Never reuse meals when current input has explicit quantities
+    if (quantityInfo.hasExplicitQuantities) {
+      console.log('🚨 SAFETY CHECK: Current input has explicit quantities - blocking previous meal reuse');
+      return null;
+    }
+
     const allMeals = await getAllMeals();
     
-    // Normalize the description for comparison
-    const normalizedDescription = normalizeDescription(description);
+    // Normalize the description for comparison (keep this for vague descriptions)
+    const normalizedDescription = normalizeDescriptionForVagueMatch(description);
     
-    // Look for exact or very similar matches
+    // Look for exact matches of vague descriptions only
     for (const meal of allMeals) {
-      const normalizedMealText = normalizeDescription(meal.originalText);
+      const mealQuantityInfo = analyzeQuantities(meal.originalText);
       
-      // Check for exact match first
-      if (normalizedMealText === normalizedDescription) {
-        console.log(`🎯 Found exact match: "${meal.originalText}"`);
-        return meal;
-      }
-      
-      // Check for very similar match (85% similarity for high confidence)
-      const similarity = calculateSimilarity(normalizedDescription, normalizedMealText);
-      if (similarity > 0.85) {
-        console.log(`🎯 Found similar match (${(similarity * 100).toFixed(1)}%): "${meal.originalText}"`);
-        return meal;
+      // Only match against meals that ALSO have no explicit quantities
+      if (!mealQuantityInfo.hasExplicitQuantities) {
+        const normalizedMealText = normalizeDescriptionForVagueMatch(meal.originalText);
+        
+        // Check for exact match of vague descriptions
+        if (normalizedMealText === normalizedDescription) {
+          console.log(`🎯 Found exact vague match: "${meal.originalText}"`);
+          return meal;
+        }
+        
+        // Check for very similar match (90% similarity for vague descriptions only)
+        const similarity = calculateSimilarity(normalizedDescription, normalizedMealText);
+        if (similarity > 0.90) {
+          console.log(`🎯 Found similar vague match (${(similarity * 100).toFixed(1)}%): "${meal.originalText}"`);
+          return meal;
+        }
       }
     }
     
-    console.log('📭 No previous analysis found for this meal');
+    console.log('📭 No previous vague meal analysis found');
     return null;
   } catch (error) {
     console.error('Error searching for previous meals:', error);
@@ -102,19 +171,15 @@ async function findPreviousMeal(description: string) {
 }
 
 /**
- * Normalize description for comparison
+ * Normalize description ONLY for vague meal matching (preserves food names)
  */
-function normalizeDescription(description: string): string {
+function normalizeDescriptionForVagueMatch(description: string): string {
   return description
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s%]/g, '') // Remove punctuation but keep %
+    .replace(/[^\w\s]/g, '') // Remove punctuation
     .replace(/\s+/g, ' ') // Normalize whitespace
-    .replace(/\b(a|an|the|with|and|of|one|1)\b/g, '') // Remove common words and numbers
-    .replace(/\bglass\b/g, 'glass') // Normalize container words
-    .replace(/\bcup\b/g, 'cup')
-    .replace(/\bmilk\b/g, 'milk')
-    .replace(/\bfat\b/g, 'fat')
+    .replace(/\b(a|an|the|with|and|of|some)\b/g, '') // Remove common words but keep quantities
     .replace(/\s+/g, ' ') // Clean up extra spaces
     .trim();
 }
@@ -255,11 +320,16 @@ export const testEnhancedAI = {
   analyzeMeal: (description: string) => analyzeEnhancedMeal(description),
   
   examples: {
-    simple: () => analyzeEnhancedMeal('100g chicken breast'),
-    complex: () => analyzeEnhancedMeal('150g chicken breast, 100g rice, 1 banana'),
-    mixed: () => analyzeEnhancedMeal('protein powder 30g, banana 120g, peanut butter 15g'),
-    meal: () => analyzeEnhancedMeal('grilled chicken breast 200g, mashed potatoes 150g, gravy 50g'),
-    milk: () => analyzeEnhancedMeal('1 glass of milk 3% fat'),
+    // Test explicit quantities (should never reuse previous meals)
+    explicit: () => analyzeEnhancedMeal('2 bananas'), // Should use exactly 2, not reuse "5 bananas"
+    explicitMixed: () => analyzeEnhancedMeal('150g chicken breast, 100g rice'), // Should use exact amounts
+    
+    // Test vague descriptions (can reuse previous meals)
+    vague: () => analyzeEnhancedMeal('some chicken and rice'), // Can reuse similar vague meal
+    vagueContainer: () => analyzeEnhancedMeal('a bowl of pasta'), // Can reuse similar vague meal
+    
+    // Test cases that prevent contamination
+    contamination: () => analyzeEnhancedMeal('3 eggs'), // Should not reuse "5 eggs" from history
   }
 };
 
@@ -267,5 +337,5 @@ export const testEnhancedAI = {
 if (typeof window !== 'undefined') {
   (window as any).testEnhancedAI = testEnhancedAI;
   console.log('Enhanced AI test functions available as window.testEnhancedAI');
-  console.log('Example: window.testEnhancedAI.examples.simple()');
+  console.log('Example: window.testEnhancedAI.examples.explicit()');
 } 
