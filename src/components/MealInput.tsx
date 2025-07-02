@@ -109,20 +109,52 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   // Prevent iOS zoom and other behaviors when recording is active
   useEffect(() => {
     if (isRecordingActive) {
+      console.log('🔒 Activating iOS zoom prevention');
+      
       // Prevent zoom on the entire viewport during recording
       const viewport = document.querySelector('meta[name=viewport]');
       const originalContent = viewport?.getAttribute('content');
       
       if (viewport) {
-        viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover');
       }
       
-      // Add CSS to prevent text selection and context menus
+      // Add aggressive CSS to prevent all interactions
+      const originalBodyStyles = {
+        userSelect: document.body.style.userSelect,
+        webkitUserSelect: (document.body.style as any).webkitUserSelect,
+        webkitTouchCallout: (document.body.style as any).webkitTouchCallout,
+        touchAction: document.body.style.touchAction,
+        overflow: document.body.style.overflow
+      };
+      
       document.body.style.userSelect = 'none';
       (document.body.style as any).webkitUserSelect = 'none';
       (document.body.style as any).webkitTouchCallout = 'none';
+      document.body.style.touchAction = 'none';
+      
+      // Prevent all touch events on document that could cause zoom
+      const preventDefault = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      
+      const preventGestures = (e: TouchEvent) => {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      
+      document.addEventListener('touchstart', preventGestures, { passive: false });
+      document.addEventListener('touchmove', preventGestures, { passive: false });
+      document.addEventListener('gesturestart', preventDefault, { passive: false });
+      document.addEventListener('gesturechange', preventDefault, { passive: false });
+      document.addEventListener('gestureend', preventDefault, { passive: false });
       
       return () => {
+        console.log('🔓 Restoring iOS normal behavior');
+        
         // Restore original viewport settings
         if (viewport && originalContent) {
           viewport.setAttribute('content', originalContent);
@@ -130,10 +162,18 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
           viewport.setAttribute('content', 'width=device-width, initial-scale=1');
         }
         
-        // Restore text selection
-        document.body.style.userSelect = '';
-        (document.body.style as any).webkitUserSelect = '';
-        (document.body.style as any).webkitTouchCallout = '';
+        // Restore original body styles
+        document.body.style.userSelect = originalBodyStyles.userSelect;
+        (document.body.style as any).webkitUserSelect = originalBodyStyles.webkitUserSelect;
+        (document.body.style as any).webkitTouchCallout = originalBodyStyles.webkitTouchCallout;
+        document.body.style.touchAction = originalBodyStyles.touchAction;
+        
+        // Remove event listeners
+        document.removeEventListener('touchstart', preventGestures);
+        document.removeEventListener('touchmove', preventGestures);
+        document.removeEventListener('gesturestart', preventDefault);
+        document.removeEventListener('gesturechange', preventDefault);
+        document.removeEventListener('gestureend', preventDefault);
       };
     }
   }, [isRecordingActive]);
@@ -179,6 +219,14 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     e.preventDefault();
     
     if (!mealText.trim() || isAnalyzing) return;
+
+    // Stop any active recording before submitting
+    if (isAIRecording) {
+      await stopAIVoiceInput();
+    }
+    if (isWebSpeechRecording) {
+      stopWebSpeechInput();
+    }
 
     setIsAnalyzing(true);
     
@@ -597,7 +645,16 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
             {onCancel && (
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={() => {
+                  // Stop any active recording before canceling
+                  if (isAIRecording) {
+                    stopAIVoiceInput();
+                  }
+                  if (isWebSpeechRecording) {
+                    stopWebSpeechInput();
+                  }
+                  onCancel();
+                }}
                 className="btn-pill-secondary flex-1 tap-effect"
                 disabled={isAnalyzing}
               >
