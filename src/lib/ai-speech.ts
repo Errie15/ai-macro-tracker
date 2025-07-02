@@ -98,11 +98,14 @@ export class AIAudioRecorder {
   private stream: MediaStream | null = null;
   private voiceDetector: VoiceActivityDetector | null = null;
   private recordingFormat: { mimeType: string; fileExtension: string } | null = null;
+  private isStopping: boolean = false;
 
   async startRecording(options: AudioRecordingOptions = {}, onSilenceDetected?: () => void): Promise<void> {
     const { maxDuration = 10 } = options;
 
     try {
+      // Reset stopping flag for new recording
+      this.isStopping = false;
       console.log('🎤 Device info - Mobile:', isMobile(), 'iOS:', isIOS(), 'Safari:', isSafari());
       
       // Get optimal recording format
@@ -192,15 +195,25 @@ export class AIAudioRecorder {
   async stopRecording(): Promise<Blob> {
     return new Promise((resolve, reject) => {
       if (!this.mediaRecorder) {
-        reject(new Error('No recording in progress'));
+        // Return empty blob instead of rejecting - this is normal for auto-stopped recordings
+        console.log('🎤 No MediaRecorder found (already cleaned up), returning empty blob');
+        resolve(new Blob([], { type: 'audio/webm' }));
         return;
       }
 
-      // If already stopped, create blob from existing chunks
+      // Prevent multiple simultaneous stop calls
+      if (this.isStopping) {
+        console.log('🎤 Already stopping, waiting for current stop to complete');
+        return;
+      }
+      this.isStopping = true;
+
+      // If already stopped, create blob from existing chunks - this is NORMAL behavior
       if (this.mediaRecorder.state === 'inactive') {
-        console.log('🎤 MediaRecorder already stopped, creating blob from existing chunks');
+        console.log('🎤 MediaRecorder already stopped (normal for auto-stop), creating blob from existing chunks');
         if (this.audioChunks.length === 0) {
           console.warn('🎤 No audio chunks available, creating empty blob');
+          this.cleanup();
           resolve(new Blob([], { type: this.recordingFormat?.mimeType || 'audio/webm' }));
           return;
         }
@@ -208,7 +221,7 @@ export class AIAudioRecorder {
           type: this.recordingFormat?.mimeType || 'audio/webm' 
         });
         this.cleanup();
-        console.log('🎤 AI Audio Recording blob created, size:', audioBlob.size);
+        console.log('🎤 AI Audio Recording blob created successfully, size:', audioBlob.size);
         resolve(audioBlob);
         return;
       }
@@ -267,6 +280,7 @@ export class AIAudioRecorder {
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.recordingFormat = null;
+    this.isStopping = false;
   }
 
   isRecording(): boolean {

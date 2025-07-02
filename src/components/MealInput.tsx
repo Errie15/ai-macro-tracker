@@ -232,22 +232,11 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
           return;
         }
       } catch (stopError) {
-        console.error('🎤 Error stopping recording:', stopError);
+        console.error('🎤 Unexpected error stopping recording:', stopError);
         setIsAIRecording(false);
         
-        // More specific error messaging
-        let errorMessage = 'Recording failed to stop properly. ';
-        if (stopError instanceof Error) {
-          if (stopError.message.includes('timeout')) {
-            errorMessage += 'The recording took too long to stop. Please try again with a shorter recording.';
-          } else if (stopError.message.includes('No recording in progress')) {
-            errorMessage += 'Recording was already stopped. Please try starting a new recording.';
-          } else {
-            errorMessage += 'Please try again or use the manual input.';
-          }
-        }
-        
-        alert(errorMessage);
+        // Should be rare now that we handle "already stopped" gracefully
+        alert('Recording failed. Please try again or use manual input.');
         return;
       }
       
