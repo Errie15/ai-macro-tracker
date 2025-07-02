@@ -7,7 +7,7 @@ import GoalsSettings from './GoalsSettings';
 import ProfileSettings from './ProfileSettings';
 // import OnboardingHelp from './OnboardingHelp';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserProfile } from '@/lib/storage';
+import { getUserProfile, getUserLanguage, setUserLanguage } from '@/lib/storage';
 
 interface SettingsMenuProps {
   goals: MacroGoals;
@@ -27,6 +27,7 @@ export default function SettingsMenu({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({});
+  const [language, setLanguage] = useState<string>('en-US');
   const { user, logout } = useAuth();
 
   // Change password form state
@@ -41,8 +42,12 @@ export default function SettingsMenu({
 
   useEffect(() => {
     if (isOpen) {
-      getUserProfile().then(profile => {
+      Promise.all([
+        getUserProfile(),
+        getUserLanguage()
+      ]).then(([profile, userLanguage]) => {
         setUserProfile(profile);
+        setLanguage(userLanguage);
       });
     }
   }, [isOpen]);
@@ -61,6 +66,15 @@ export default function SettingsMenu({
       closeMenu();
     } catch (error) {
       console.error('Error logging out:', error);
+    }
+  };
+
+  const handleLanguageChange = async (newLanguage: string) => {
+    try {
+      await setUserLanguage(newLanguage);
+      setLanguage(newLanguage);
+    } catch (error) {
+      console.error('Error saving language preference:', error);
     }
   };
 
@@ -221,9 +235,17 @@ export default function SettingsMenu({
               <div className="flex items-center justify-between p-4 rounded-2xl bg-white/10">
                 <div className="flex items-center gap-3">
                   <Globe className="w-5 h-5 text-secondary" />
-                  <span className="font-medium text-primary">Language</span>
+                  <span className="font-medium text-primary">Voice Language</span>
                 </div>
-                <span className="text-sm text-secondary">English</span>
+                <select
+                  value={language}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
+                  className="bg-white/20 border border-white/30 rounded-lg px-3 py-1 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                >
+                  <option value="en-US" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', color: 'white' }}>English</option>
+                  <option value="sv-SE" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', color: 'white' }}>Swedish</option>
+                </select>
               </div>
 
               {/* Profile Settings Button */}

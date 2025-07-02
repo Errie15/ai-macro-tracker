@@ -199,6 +199,11 @@ export class AIAudioRecorder {
       // If already stopped, create blob from existing chunks
       if (this.mediaRecorder.state === 'inactive') {
         console.log('🎤 MediaRecorder already stopped, creating blob from existing chunks');
+        if (this.audioChunks.length === 0) {
+          console.warn('🎤 No audio chunks available, creating empty blob');
+          resolve(new Blob([], { type: this.recordingFormat?.mimeType || 'audio/webm' }));
+          return;
+        }
         const audioBlob = new Blob(this.audioChunks, { 
           type: this.recordingFormat?.mimeType || 'audio/webm' 
         });
@@ -208,7 +213,20 @@ export class AIAudioRecorder {
         return;
       }
 
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        console.warn('🎤 Stop recording timeout, forcing cleanup');
+        this.cleanup();
+        reject(new Error('Recording stop timeout'));
+      }, 5000);
+
       this.mediaRecorder.onstop = () => {
+        clearTimeout(timeout);
+        if (this.audioChunks.length === 0) {
+          console.warn('🎤 No audio chunks available after stop');
+          resolve(new Blob([], { type: this.recordingFormat?.mimeType || 'audio/webm' }));
+          return;
+        }
         const audioBlob = new Blob(this.audioChunks, { 
           type: this.recordingFormat?.mimeType || 'audio/webm' 
         });
@@ -219,14 +237,19 @@ export class AIAudioRecorder {
 
       // Add error handler
       this.mediaRecorder.onerror = (event) => {
+        clearTimeout(timeout);
         console.error('🎤 MediaRecorder error during stop:', event);
+        this.cleanup();
         reject(new Error('MediaRecorder error during stop'));
       };
 
       try {
+        console.log('🎤 Calling mediaRecorder.stop(), current state:', this.mediaRecorder.state);
         this.mediaRecorder.stop();
       } catch (error) {
+        clearTimeout(timeout);
         console.error('🎤 Error calling stop():', error);
+        this.cleanup();
         reject(error);
       }
     });

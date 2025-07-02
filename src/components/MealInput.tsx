@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Loader2, Mic, MessageCircle, RotateCcw, AudioWaveform } from 'lucide-react';
+import { Plus, Loader2, Mic, MessageCircle, RotateCcw, AudioWaveform, Globe } from 'lucide-react';
 import { analyzeEnhancedMeal } from '@/lib/enhanced-gemini';
-import { addMeal } from '@/lib/storage';
+import { addMeal, getUserLanguage, setUserLanguage } from '@/lib/storage';
 import { MealEntry } from '@/types';
 import { AIAudioRecorder, transcribeAudio } from '@/lib/ai-speech';
 
@@ -87,6 +87,7 @@ interface MealInputProps {
 export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   const [mealText, setMealText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [language, setLanguage] = useState('en-US');
 
   const [isAIRecording, setIsAIRecording] = useState(false);
   const [isWebSpeechRecording, setIsWebSpeechRecording] = useState(false);
@@ -97,6 +98,23 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   const aiRecorderRef = useRef<AIAudioRecorder | null>(null);
   const aiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const webSpeechRef = useRef<SpeechRecognition | null>(null);
+
+  // Load user language preference
+  useEffect(() => {
+    getUserLanguage().then(userLanguage => {
+      setLanguage(userLanguage);
+    });
+  }, []);
+
+  const toggleLanguage = async () => {
+    const newLanguage = language === 'en-US' ? 'sv-SE' : 'en-US';
+    try {
+      await setUserLanguage(newLanguage);
+      setLanguage(newLanguage);
+    } catch (error) {
+      console.error('Error saving language preference:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,8 +160,6 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       setIsAnalyzing(false);
     }
   };
-
-
 
   const startAIVoiceInput = async () => {
     try {
@@ -208,15 +224,35 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       try {
         audioBlob = await aiRecorderRef.current.stopRecording();
         console.log('🎤 Successfully stopped recording, got blob size:', audioBlob.size);
+        
+        // Check if we got valid audio data
+        if (!audioBlob || audioBlob.size === 0) {
+          console.warn('🎤 No audio data captured');
+          alert('No audio was recorded. Please try again and speak clearly.');
+          return;
+        }
       } catch (stopError) {
         console.error('🎤 Error stopping recording:', stopError);
         setIsAIRecording(false);
-        alert('Failed to stop recording. Please try again.');
+        
+        // More specific error messaging
+        let errorMessage = 'Recording failed to stop properly. ';
+        if (stopError instanceof Error) {
+          if (stopError.message.includes('timeout')) {
+            errorMessage += 'The recording took too long to stop. Please try again with a shorter recording.';
+          } else if (stopError.message.includes('No recording in progress')) {
+            errorMessage += 'Recording was already stopped. Please try starting a new recording.';
+          } else {
+            errorMessage += 'Please try again or use the manual input.';
+          }
+        }
+        
+        alert(errorMessage);
         return;
       }
       
-      // Transcribe using AI
-      const result = await transcribeAudio(audioBlob);
+      // Transcribe using AI with user's selected language
+      const result = await transcribeAudio(audioBlob, language);
       
       console.log('🎤 AI Transcription result:', result);
       
@@ -295,7 +331,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       webSpeechRef.current = new SpeechRecognition();
 
       const recognition = webSpeechRef.current;
-      recognition.lang = 'en-US';
+      recognition.lang = language;
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.maxAlternatives = 3;
@@ -446,7 +482,10 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              placeholder="Describe your meal here... e.g. '50g protein powder, one banana and 10g peanut butter'"
+              placeholder={language === 'en-US' 
+                ? "Describe your meal here... e.g. '50g protein powder, one banana and 10g peanut butter'"
+                : "Beskriv din måltid här... t.ex. '50g proteinpulver, en banan och 10g jordnötssmör'"
+              }
               className="input-field-large"
               disabled={isAnalyzing}
               rows={4}
@@ -464,6 +503,23 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
                   <RotateCcw className="w-5 h-5" />
                 </button>
               )}
+              
+              {/* Language Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleLanguage}
+                className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
+                  language === 'sv-SE' ? 'bg-yellow-500/20 border-yellow-400/30' : ''
+                }`}
+                title={`Voice Language: ${language === 'en-US' ? 'English' : 'Swedish'} (click to switch)`}
+              >
+                <div className="flex flex-col items-center justify-center">
+                  <Globe className={`w-4 h-4 ${language === 'sv-SE' ? 'text-yellow-400' : ''}`} />
+                  <span className={`text-xs font-bold ${language === 'sv-SE' ? 'text-yellow-400' : ''}`}>
+                    {language === 'en-US' ? 'EN' : 'SV'}
+                  </span>
+                </div>
+              </button>
               
               {/* Web Speech API Button (Red) - Only show as fallback */}
               {showWebSpeechFallback && (
@@ -556,7 +612,9 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
             </div>
             <div className="flex-1">
               <p className="font-bold text-lg">Listening...</p>
-              <p className="text-sm opacity-80">Web Speech API • Fallback mode • Speak clearly</p>
+              <p className="text-sm opacity-80">
+                Web Speech API • {language === 'en-US' ? 'English' : 'Swedish'} • Speak clearly
+              </p>
             </div>
             <button
               onClick={stopWebSpeechInput}
@@ -578,7 +636,9 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
             </div>
             <div className="flex-1">
               <p className="font-bold text-lg">Recording...</p>
-              <p className="text-sm opacity-80">Powered by OpenAI Whisper • Mobile-optimized • Auto-stop</p>
+              <p className="text-sm opacity-80">
+                Powered by OpenAI Whisper • {language === 'en-US' ? 'English' : 'Swedish'} • Auto-stop
+              </p>
             </div>
             <button
               onClick={stopAIVoiceInput}
@@ -589,7 +649,6 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
           </div>
         </div>
       )}
-
 
     </div>
   );

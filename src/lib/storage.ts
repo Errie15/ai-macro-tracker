@@ -501,12 +501,18 @@ export async function getUserTheme(): Promise<boolean> {
   const user = await getCurrentUser();
   
   if (!user) {
-    // Return default theme (light mode) for non-authenticated users
-    return false;
+    // Get from localStorage for non-authenticated users
+    try {
+      const stored = localStorage.getItem('macro-tracker-theme');
+      return stored ? JSON.parse(stored) : false;
+    } catch (error) {
+      console.warn('Could not load theme from localStorage:', error);
+      return false;
+    }
   }
 
   try {
-    const themeRef = ref(db, `users/${user.uid}/settings/isDarkMode`);
+    const themeRef = ref(db, `users/${user.uid}/preferences/theme`);
     const snapshot = await get(themeRef);
     
     if (snapshot.exists()) {
@@ -525,15 +531,73 @@ export async function setUserTheme(isDarkMode: boolean): Promise<void> {
   const user = await getCurrentUser();
   
   if (!user) {
-    console.warn('Cannot save theme preference: user not authenticated');
+    // Store in localStorage for non-authenticated users
+    try {
+      localStorage.setItem('macro-tracker-theme', JSON.stringify(isDarkMode));
+    } catch (error) {
+      console.warn('Could not save theme to localStorage:', error);
+    }
     return;
   }
 
   try {
-    const themeRef = ref(db, `users/${user.uid}/settings/isDarkMode`);
+    const themeRef = ref(db, `users/${user.uid}/preferences/theme`);
     await set(themeRef, isDarkMode);
   } catch (error) {
     console.error('Error saving theme preference to Realtime Database:', error);
+    throw error;
+  }
+}
+
+// Language Preference Functions
+export async function getUserLanguage(): Promise<string> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    // Get from localStorage for non-authenticated users
+    try {
+      const stored = localStorage.getItem('macro-tracker-language');
+      return stored ? JSON.parse(stored) : 'en-US';
+    } catch (error) {
+      console.warn('Could not load language from localStorage:', error);
+      return 'en-US';
+    }
+  }
+
+  try {
+    const languageRef = ref(db, `users/${user.uid}/preferences/language`);
+    const snapshot = await get(languageRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.val() as string;
+    } else {
+      // Default to English
+      return 'en-US';
+    }
+  } catch (error) {
+    console.error('Error fetching language preference from Realtime Database:', error);
+    return 'en-US';
+  }
+}
+
+export async function setUserLanguage(language: string): Promise<void> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    // Store in localStorage for non-authenticated users
+    try {
+      localStorage.setItem('macro-tracker-language', JSON.stringify(language));
+    } catch (error) {
+      console.warn('Could not save language to localStorage:', error);
+    }
+    return;
+  }
+
+  try {
+    const languageRef = ref(db, `users/${user.uid}/preferences/language`);
+    await set(languageRef, language);
+  } catch (error) {
+    console.error('Error saving language preference to Realtime Database:', error);
     throw error;
   }
 } 
