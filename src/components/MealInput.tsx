@@ -96,7 +96,6 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const aiRecorderRef = useRef<AIAudioRecorder | null>(null);
-  const aiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const webSpeechRef = useRef<SpeechRecognition | null>(null);
 
   // Load user language preference
@@ -162,27 +161,19 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   };
 
   const startAIVoiceInput = async () => {
+    if (isAIRecording) return; // Prevent multiple starts
+    
     try {
       setIsAIRecording(true);
-      console.log('🎤 Starting AI-powered voice recording...');
+      console.log('🎤 Starting push-to-talk AI recording...');
 
       // Create AI recorder instance
       aiRecorderRef.current = new AIAudioRecorder();
       
-      // Start recording with voice activity detection
+      // Start recording without voice activity detection for push-to-talk
       await aiRecorderRef.current.startRecording({ 
-        maxDuration: 30 // High value, voice detection will stop before this
-      }, () => {
-        // Voice activity detection callback - stop when silence is detected
-        console.log('🎤 Voice activity detection triggered stop');
-        handleAIRecordingStop();
+        maxDuration: 60 // Long timeout, user controls when to stop
       });
-
-      // Fallback timeout in case voice detection fails
-      aiTimeoutRef.current = setTimeout(async () => {
-        console.log('🎤 Fallback timeout triggered (5s max)');
-        await handleAIRecordingStop();
-      }, 5000); // 5 seconds max fallback
 
     } catch (error) {
       console.error('🎤 Failed to start AI recording:', error);
@@ -268,32 +259,23 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       }
     } finally {
       setIsAIRecording(false);
-      
-      // Clean up timeout reference
-      if (aiTimeoutRef.current) {
-        clearTimeout(aiTimeoutRef.current);
-        aiTimeoutRef.current = null;
-      }
     }
   };
 
   const stopAIVoiceInput = async () => {
-    console.log('🎤 Manual stop requested...');
+    if (!isAIRecording) return; // Prevent multiple stops
     
-    // Clear the auto-stop timeout since we're stopping manually
-    if (aiTimeoutRef.current) {
-      clearTimeout(aiTimeoutRef.current);
-      aiTimeoutRef.current = null;
-    }
-    
+    console.log('🎤 Push-to-talk stop requested...');
     await handleAIRecordingStop();
   };
 
   // Web Speech API functions (fallback/alternative)
   const startWebSpeechInput = async () => {
+    if (isWebSpeechRecording) return; // Prevent multiple starts
+    
     try {
       setIsWebSpeechRecording(true);
-      console.log('🎤 Starting Web Speech API...');
+      console.log('🎤 Starting push-to-talk Web Speech API...');
 
       // Check if Web Speech API is supported
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -308,7 +290,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
 
       const recognition = webSpeechRef.current;
       recognition.lang = language;
-      recognition.continuous = false;
+      recognition.continuous = true; // Keep listening while button is held
       recognition.interimResults = false;
       recognition.maxAlternatives = 3;
 
@@ -371,7 +353,9 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   };
 
   const stopWebSpeechInput = () => {
-    console.log('🎤 Stopping Web Speech recognition...');
+    if (!isWebSpeechRecording) return; // Prevent multiple stops
+    
+    console.log('🎤 Stopping push-to-talk Web Speech recognition...');
     if (webSpeechRef.current) {
       webSpeechRef.current.stop();
     }
@@ -483,12 +467,27 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               {showWebSpeechFallback && (
                 <button
                   type="button"
-                  onClick={isWebSpeechRecording ? stopWebSpeechInput : startWebSpeechInput}
+                  onMouseDown={startWebSpeechInput}
+                  onMouseUp={stopWebSpeechInput}
+                  onMouseLeave={stopWebSpeechInput}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    startWebSpeechInput();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    stopWebSpeechInput();
+                  }}
+                  onTouchCancel={(e) => {
+                    e.preventDefault();
+                    stopWebSpeechInput();
+                  }}
                   disabled={isAnalyzing || isAIRecording}
-                  className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
-                    isWebSpeechRecording ? 'bg-red-500/20 border-red-400/30' : ''
+                  className={`btn-pill-secondary w-12 h-12 p-0 select-none transition-all duration-150 ${
+                    isWebSpeechRecording ? 'bg-red-500/30 border-red-400/50 scale-95 shadow-lg' : 'hover:scale-105'
                   }`}
-                  title="Web Speech API - Fallback option (Chrome/Edge recommended)"
+                  style={{ touchAction: 'manipulation', userSelect: 'none' }}
+                  title="Hold to record with Web Speech API (fallback)"
                 >
                   <Mic className={`w-5 h-5 ${
                     isWebSpeechRecording ? 'text-red-400 animate-pulse' : 'text-red-400'
@@ -496,15 +495,30 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
                 </button>
               )}
               
-              {/* AI Voice Input Button (Blue) - Primary option */}
+              {/* AI Voice Input Button (Blue) - Push to Talk */}
               <button
                 type="button"
-                onClick={isAIRecording ? stopAIVoiceInput : startAIVoiceInput}
+                onMouseDown={startAIVoiceInput}
+                onMouseUp={stopAIVoiceInput}
+                onMouseLeave={stopAIVoiceInput}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  startAIVoiceInput();
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  stopAIVoiceInput();
+                }}
+                onTouchCancel={(e) => {
+                  e.preventDefault();
+                  stopAIVoiceInput();
+                }}
                 disabled={isAnalyzing || isWebSpeechRecording}
-                className={`btn-pill-secondary w-12 h-12 p-0 tap-effect ${
-                  isAIRecording ? 'bg-blue-500/20 border-blue-400/30' : ''
+                className={`btn-pill-secondary w-12 h-12 p-0 select-none transition-all duration-150 ${
+                  isAIRecording ? 'bg-blue-500/30 border-blue-400/50 scale-95 shadow-lg' : 'hover:scale-105'
                 }`}
-                title="AI Voice input (OpenAI Whisper) - Primary voice input"
+                style={{ touchAction: 'manipulation', userSelect: 'none' }}
+                title="Hold to record with AI (OpenAI Whisper)"
               >
                 <Mic className={`w-5 h-5 ${
                   isAIRecording ? 'text-blue-400 animate-pulse' : 'text-blue-400'
@@ -568,18 +582,12 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               <Mic className="w-6 h-6" />
               <div className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-30" />
             </div>
-            <div className="flex-1">
-              <p className="font-bold text-lg">Listening...</p>
+            <div className="flex-1 text-center">
+              <p className="font-bold text-lg">🎤 Listening...</p>
               <p className="text-sm opacity-80">
-                Web Speech API • {language === 'en-US' ? 'English' : 'Swedish'} • Speak clearly
+                Release button to stop • {language === 'en-US' ? 'English' : 'Swedish'}
               </p>
             </div>
-            <button
-              onClick={stopWebSpeechInput}
-              className="btn-pill-secondary px-3 py-1 text-sm tap-effect"
-            >
-              Stop
-            </button>
           </div>
         </div>
       )}
@@ -592,18 +600,12 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
               <Mic className="w-6 h-6" />
               <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-30" />
             </div>
-            <div className="flex-1">
-              <p className="font-bold text-lg">Recording...</p>
+            <div className="flex-1 text-center">
+              <p className="font-bold text-lg">🎤 Recording...</p>
               <p className="text-sm opacity-80">
-                Powered by OpenAI Whisper • {language === 'en-US' ? 'English' : 'Swedish'} • Auto-stop
+                Release button to stop • {language === 'en-US' ? 'English' : 'Swedish'}
               </p>
             </div>
-            <button
-              onClick={stopAIVoiceInput}
-              className="btn-pill-secondary px-3 py-1 text-sm tap-effect"
-            >
-              Stop
-            </button>
           </div>
         </div>
       )}
