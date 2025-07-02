@@ -93,6 +93,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
   const [isWebSpeechRecording, setIsWebSpeechRecording] = useState(false);
   const [showWebSpeechFallback, setShowWebSpeechFallback] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'down' | 'left' | 'right' | null>(null);
+  const [isRecordingActive, setIsRecordingActive] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const aiRecorderRef = useRef<AIAudioRecorder | null>(null);
@@ -105,6 +106,38 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     });
   }, []);
 
+  // Prevent iOS zoom and other behaviors when recording is active
+  useEffect(() => {
+    if (isRecordingActive) {
+      // Prevent zoom on the entire viewport during recording
+      const viewport = document.querySelector('meta[name=viewport]');
+      const originalContent = viewport?.getAttribute('content');
+      
+      if (viewport) {
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+      }
+      
+      // Add CSS to prevent text selection and context menus
+      document.body.style.userSelect = 'none';
+      (document.body.style as any).webkitUserSelect = 'none';
+      (document.body.style as any).webkitTouchCallout = 'none';
+      
+      return () => {
+        // Restore original viewport settings
+        if (viewport && originalContent) {
+          viewport.setAttribute('content', originalContent);
+        } else if (viewport) {
+          viewport.setAttribute('content', 'width=device-width, initial-scale=1');
+        }
+        
+        // Restore text selection
+        document.body.style.userSelect = '';
+        (document.body.style as any).webkitUserSelect = '';
+        (document.body.style as any).webkitTouchCallout = '';
+      };
+    }
+  }, [isRecordingActive]);
+
   const toggleLanguage = async () => {
     const newLanguage = language === 'en-US' ? 'sv-SE' : 'en-US';
     try {
@@ -112,6 +145,33 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       setLanguage(newLanguage);
     } catch (error) {
       console.error('Error saving language preference:', error);
+    }
+  };
+
+  // Special handlers to prevent iOS zoom and other behaviors during recording
+  const handleRecordingTouchStart = (e: React.TouchEvent, startFunction: () => void) => {
+    e.preventDefault(); // Prevent iOS zoom, context menu, etc.
+    e.stopPropagation(); // Don't bubble up
+    startFunction();
+  };
+
+  const handleRecordingTouchEnd = (e: React.TouchEvent, stopFunction: () => void) => {
+    e.preventDefault(); // Prevent iOS behaviors
+    e.stopPropagation(); // Don't bubble up
+    stopFunction();
+  };
+
+  const handleRecordingTouchCancel = (e: React.TouchEvent, stopFunction: () => void) => {
+    e.preventDefault(); // Prevent iOS behaviors
+    e.stopPropagation(); // Don't bubble up
+    stopFunction();
+  };
+
+  // Prevent context menu during recording
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (isRecordingActive) {
+      e.preventDefault();
+      e.stopPropagation();
     }
   };
 
@@ -165,6 +225,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     
     try {
       setIsAIRecording(true);
+      setIsRecordingActive(true); // Prevent iOS zoom/interactions
       console.log('🎤 Starting push-to-talk AI recording...');
 
       // Create AI recorder instance
@@ -178,6 +239,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     } catch (error) {
       console.error('🎤 Failed to start AI recording:', error);
       setIsAIRecording(false);
+      setIsRecordingActive(false);
       
       // Only show fallback for permission issues, not other errors
       if (error instanceof Error && error.message.includes('permissions')) {
@@ -259,6 +321,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       }
     } finally {
       setIsAIRecording(false);
+      setIsRecordingActive(false);
     }
   };
 
@@ -266,6 +329,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     if (!isAIRecording) return; // Prevent multiple stops
     
     console.log('🎤 Push-to-talk stop requested...');
+    setIsRecordingActive(false); // Re-enable iOS interactions
     await handleAIRecordingStop();
   };
 
@@ -275,6 +339,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     
     try {
       setIsWebSpeechRecording(true);
+      setIsRecordingActive(true); // Prevent iOS zoom/interactions
       console.log('🎤 Starting push-to-talk Web Speech API...');
 
       // Check if Web Speech API is supported
@@ -321,6 +386,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       recognition.onerror = (event) => {
         console.error('🎤 Web Speech recognition error:', event.error);
         setIsWebSpeechRecording(false);
+        setIsRecordingActive(false);
         
         // Just log errors, don't show alerts unless it's a permission issue
         if (event.error === 'not-allowed') {
@@ -333,6 +399,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
       recognition.onend = () => {
         console.log('🎤 Web Speech recognition ended');
         setIsWebSpeechRecording(false);
+        setIsRecordingActive(false);
       };
 
       // Request microphone permission and start
@@ -342,6 +409,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     } catch (error) {
       console.error('🎤 Failed to start Web Speech recording:', error);
       setIsWebSpeechRecording(false);
+      setIsRecordingActive(false);
       
       // Only show alert for permission issues
       if (error instanceof Error && error.message.includes('permissions')) {
@@ -356,6 +424,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
     if (!isWebSpeechRecording) return; // Prevent multiple stops
     
     console.log('🎤 Stopping push-to-talk Web Speech recognition...');
+    setIsRecordingActive(false); // Re-enable iOS interactions
     if (webSpeechRef.current) {
       webSpeechRef.current.stop();
     }
@@ -470,23 +539,21 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
                   onMouseDown={startWebSpeechInput}
                   onMouseUp={stopWebSpeechInput}
                   onMouseLeave={stopWebSpeechInput}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    startWebSpeechInput();
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    stopWebSpeechInput();
-                  }}
-                  onTouchCancel={(e) => {
-                    e.preventDefault();
-                    stopWebSpeechInput();
-                  }}
+                                  onTouchStart={(e) => handleRecordingTouchStart(e, startWebSpeechInput)}
+                onTouchEnd={(e) => handleRecordingTouchEnd(e, stopWebSpeechInput)}
+                onTouchCancel={(e) => handleRecordingTouchCancel(e, stopWebSpeechInput)}
+                onContextMenu={handleContextMenu}
                   disabled={isAnalyzing || isAIRecording}
                   className={`btn-pill-secondary w-12 h-12 p-0 select-none transition-all duration-150 ${
                     isWebSpeechRecording ? 'bg-red-500/30 border-red-400/50 scale-95 shadow-lg' : 'hover:scale-105'
                   }`}
-                  style={{ touchAction: 'manipulation', userSelect: 'none' }}
+                  style={{ 
+                    touchAction: isRecordingActive ? 'none' : 'manipulation',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
                   title="Hold to record with Web Speech API (fallback)"
                 >
                   <Mic className={`w-5 h-5 ${
@@ -501,23 +568,21 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
                 onMouseDown={startAIVoiceInput}
                 onMouseUp={stopAIVoiceInput}
                 onMouseLeave={stopAIVoiceInput}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  startAIVoiceInput();
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  stopAIVoiceInput();
-                }}
-                onTouchCancel={(e) => {
-                  e.preventDefault();
-                  stopAIVoiceInput();
-                }}
+                onTouchStart={(e) => handleRecordingTouchStart(e, startAIVoiceInput)}
+                onTouchEnd={(e) => handleRecordingTouchEnd(e, stopAIVoiceInput)}
+                onTouchCancel={(e) => handleRecordingTouchCancel(e, stopAIVoiceInput)}
+                onContextMenu={handleContextMenu}
                 disabled={isAnalyzing || isWebSpeechRecording}
                 className={`btn-pill-secondary w-12 h-12 p-0 select-none transition-all duration-150 ${
                   isAIRecording ? 'bg-blue-500/30 border-blue-400/50 scale-95 shadow-lg' : 'hover:scale-105'
                 }`}
-                style={{ touchAction: 'manipulation', userSelect: 'none' }}
+                style={{ 
+                  touchAction: isRecordingActive ? 'none' : 'manipulation',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
                 title="Hold to record with AI (OpenAI Whisper)"
               >
                 <Mic className={`w-5 h-5 ${
