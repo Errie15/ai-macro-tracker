@@ -148,7 +148,7 @@ Examples of trusted data:
           }
       ],
       temperature: 0,
-      max_tokens: 400,
+      max_tokens: 4000,
     });
 
     const result = nutritionResponse.choices[0].message.content;
@@ -220,10 +220,16 @@ Examples of trusted data:
         console.log(`❌ AI could not extract nutrition data from these results`);
       }
       
-      // Add delay between searches to avoid rate limiting
-      if (i < searchQueries.length - 1) {
-        console.log(`⏱️ Waiting 1 second before next search...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add minimal delay between searches
+      if (i < searchQueries.length - 1 && !officialSourceResult) {
+        console.log(`⏱️ Brief pause before next search...`);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1000ms
+      }
+      
+      // Stop early if we found a trusted source
+      if (officialSourceResult) {
+        console.log(`🎯 Found trusted source early, stopping search`);
+        break;
       }
     }
 
@@ -356,12 +362,12 @@ Output: ["chicken breast skinless nutrition facts calories per 100g USDA", "gril
 Input: "mjölk 3%"
 Output: ["milk 3% fat nutrition facts calories per 100ml", "whole milk 3% fat nutrition USDA FatSecret", "mjölk 3% fett nutrition facts Sweden"]
 
-Return JSON array of 5 optimized search queries:
-["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]`
+Return JSON array of 3 optimized search queries (reduced for speed):
+["search query 1", "search query 2", "search query 3"]`
         },
         {
           role: 'user',
-          content: `Analyze this food query and generate 5 optimized search terms for finding nutritional information: "${foodQuery}"
+          content: `Analyze this food query and generate 3 optimized search terms for finding nutritional information: "${foodQuery}"
 
 Consider:
 - What type of food is this?
@@ -370,11 +376,11 @@ Consider:
 - What cooking method might be implied?
 - Which nutrition databases would likely have this food?
 
-Generate search queries that will find accurate nutritional data from trusted sources.`
+Generate 3 search queries that will find accurate nutritional data from trusted sources.`
         }
       ],
       temperature: 0.1,
-      max_tokens: 800,
+      max_tokens: 500, // Reduced for speed
     });
 
     const result = response.choices[0].message.content;
@@ -385,8 +391,8 @@ Generate search queries that will find accurate nutritional data from trusted so
         const cleanResult = result.replace(/```json\n?|```/g, '').trim();
         const queries = JSON.parse(cleanResult);
         if (Array.isArray(queries) && queries.length > 0) {
-          console.log(`✅ Generated ${queries.length} optimized search queries:`, queries);
-          return queries;
+          console.log(`✅ Generated ${queries.length} optimized search queries`);
+          return queries.slice(0, 3); // Limit to 3 for speed
         }
       } catch (parseError) {
         console.log(`❌ Failed to parse AI search optimization:`, parseError);
@@ -395,22 +401,18 @@ Generate search queries that will find accurate nutritional data from trusted so
     
     // Fallback to basic queries if AI fails
     return [
-      `"${foodQuery}" nutrition facts calories protein fat carbs per 100ml`,
+      `"${foodQuery}" nutrition facts calories protein fat carbs`,
       `${foodQuery} nutritional information FatSecret MyFitnessPal`,
-      `${foodQuery} calories protein carbs fat USDA database`,
-      `"${foodQuery}" nutrition facts per 100g nutrition label`,
-      `${foodQuery} nutritional content macronutrients`
+      `${foodQuery} calories nutrition USDA database`
     ];
   } catch (error) {
     console.error('❌ AI search optimization failed:', error);
     
     // Fallback to basic queries
     return [
-      `"${foodQuery}" nutrition facts calories protein fat carbs per 100ml`,
+      `"${foodQuery}" nutrition facts calories protein fat carbs`,
       `${foodQuery} nutritional information FatSecret MyFitnessPal`,
-      `${foodQuery} calories protein carbs fat USDA database`,
-      `"${foodQuery}" nutrition facts per 100g nutrition label`,
-      `${foodQuery} nutritional content macronutrients`
+      `${foodQuery} calories nutrition USDA database`
     ];
   }
 }
@@ -459,71 +461,103 @@ Examples:
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: 'OpenAI API key missing' }, { status: 500 });
-    }
+    // Set longer timeout for complex nutrition analysis
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout - analysis taking too long')), 120000); // 2 minutes
+    });
 
-    if (!process.env.BRAVE_SEARCH_API_KEY) {
-      return NextResponse.json({ error: 'Brave Search API key missing - real web search not available' }, { status: 500 });
-    }
-
-    const { mealDescription } = await request.json();
-
-    if (!mealDescription || typeof mealDescription !== 'string') {
-      return NextResponse.json({ error: 'Meal description missing' }, { status: 400 });
-    }
-
-    // Parse meal into individual food items
-    const foodItems = await parseMealIntoFoodItems(mealDescription);
-    
-    // Perform REAL web searches for nutritional data for each food item
-    for (const foodItem of foodItems) {
-      try {
-        console.log(`Performing Brave Search for: ${foodItem.name}`);
-        const nutritionData = await searchFoodNutrition(foodItem.name);
-        if (nutritionData) {
-          foodItem.nutritionData = nutritionData;
-          console.log(`Found Brave Search data for ${foodItem.name}:`, nutritionData);
-        } else {
-          console.log(`❌ No nutrition data found for ${foodItem.name}`);
-        }
-      } catch (error) {
-        console.error(`Failed to perform Brave Search for ${foodItem.name}:`, error);
+    const analysisPromise = async () => {
+      if (!process.env.OPENAI_API_KEY) {
+        return NextResponse.json({ error: 'OpenAI API key missing' }, { status: 500 });
       }
-    }
 
-    // Create data section from Brave Search results
-    const realWebSearchDataSection = foodItems
-    .filter(item => item.nutritionData)
-    .map(item => 
-        `- ${item.name} (${item.quantity}): ${item.nutritionData!.calories} kcal, ${item.nutritionData!.protein}g protein, ${item.nutritionData!.carbs}g carbs, ${item.nutritionData!.fat}g fat
+      if (!process.env.BRAVE_SEARCH_API_KEY) {
+        return NextResponse.json({ error: 'Brave Search API key missing - real web search not available' }, { status: 500 });
+      }
+
+      const { mealDescription } = await request.json();
+
+      if (!mealDescription || typeof mealDescription !== 'string') {
+        return NextResponse.json({ error: 'Meal description missing' }, { status: 400 });
+      }
+
+      console.log(`🍽️ Starting nutrition analysis for: "${mealDescription}"`);
+
+      // Parse meal into individual food items
+      const foodItems = await parseMealIntoFoodItems(mealDescription);
+      console.log(`📋 Parsed into ${foodItems.length} food items`);
+      
+      // Perform nutrition searches in parallel for better speed
+      console.log(`🔍 Starting parallel nutrition searches...`);
+      const searchPromises = foodItems.map(async (foodItem, index) => {
+        try {
+          console.log(`🔍 Searching nutrition for item ${index + 1}/${foodItems.length}: ${foodItem.name}`);
+          const nutritionData = await searchFoodNutrition(foodItem.name);
+          if (nutritionData) {
+            foodItem.nutritionData = nutritionData;
+            console.log(`✅ Found nutrition data for ${foodItem.name}`);
+            return { success: true, item: foodItem.name };
+          } else {
+            console.log(`❌ No nutrition data found for ${foodItem.name}`);
+            return { success: false, item: foodItem.name };
+          }
+        } catch (error) {
+          console.error(`❌ Failed to search nutrition for ${foodItem.name}:`, error);
+          return { success: false, item: foodItem.name, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      });
+
+      // Wait for all searches to complete
+      const searchResults = await Promise.all(searchPromises);
+      const successCount = searchResults.filter(r => r.success).length;
+      console.log(`📊 Search complete: ${successCount}/${foodItems.length} items found nutrition data`);
+
+      // If no nutrition data found for any items, provide helpful message
+      if (successCount === 0) {
+        console.log(`⚠️ No nutrition data found for any food items - providing helpful response`);
+        return NextResponse.json({
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          calories: 0,
+          breakdown: foodItems.map(item => ({
+            food: item.name,
+            estimatedAmount: item.quantity,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            calories: 0,
+            source: 'No nutrition data found',
+            serving_info: 'unknown'
+          })),
+          reasoning: `No nutritional data was found for any of the food items: ${foodItems.map(item => item.name).join(', ')}. This could be due to complex meal descriptions, foreign food names, or network issues. Try entering individual food items separately or use simpler descriptions.`,
+          debug: {
+            totalItemsFound: foodItems.length,
+            itemsWithData: 0,
+            searchResults: searchResults
+          }
+        });
+      }
+
+      // Create data section from search results
+      const realWebSearchDataSection = foodItems
+        .filter(item => item.nutritionData)
+        .map(item => 
+          `- ${item.name} (${item.quantity}): ${item.nutritionData!.calories} kcal, ${item.nutritionData!.protein}g protein, ${item.nutritionData!.carbs}g carbs, ${item.nutritionData!.fat}g fat
   Serving: ${item.nutritionData!.serving_info}
-  Web Source: ${item.nutritionData!.source}
-  Raw Search Results: ${item.nutritionData!.searchResults}`
-    )
-    .join('\n');
+  Web Source: ${item.nutritionData!.source}`
+        )
+        .join('\n');
 
-    console.log(`🧮 CALCULATION INPUT DATA:`);
-    console.log(`📋 Food Items:`, foodItems.map(item => ({ 
-      name: item.name, 
-      userQuantity: item.quantity, 
-      foundData: item.nutritionData ? {
-        serving: item.nutritionData.serving_info,
-        calories: item.nutritionData.calories,
-        protein: item.nutritionData.protein,
-        carbs: item.nutritionData.carbs,
-        fat: item.nutritionData.fat,
-        source: item.nutritionData.source
-      } : null
-    })));
-    console.log(`📊 Web Search Data Section:`, realWebSearchDataSection);
+      console.log(`🧮 Calculating final nutrition totals...`);
+      console.log(`📊 Items with nutrition data: ${foodItems.filter(item => item.nutritionData).length}/${foodItems.length}`);
 
-    const response = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a nutritional expert. Use ONLY the web search nutritional data provided to analyze meals and calculate total macronutrients.
+      const response = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a nutritional expert. Use ONLY the web search nutritional data provided to analyze meals and calculate total macronutrients.
 
 ${realWebSearchDataSection ? `WEB SEARCH NUTRITIONAL DATA:\n${realWebSearchDataSection}\n` : 'NO NUTRITIONAL DATA FOUND FROM WEB SEARCH'}
 
@@ -556,10 +590,10 @@ Respond in JSON format:
   ],
   "reasoning": "Explain calculations using web search data, including how you scaled values from the found serving size to the user's specified quantity"
 }`
-        },
-        {
-          role: 'user',
-          content: `Analyze this meal: "${mealDescription}"
+          },
+          {
+            role: 'user',
+            content: `Analyze this meal: "${mealDescription}"
 
 Food items identified: ${JSON.stringify(foodItems.map(item => ({ name: item.name, quantity: item.quantity, hasWebSearchData: !!item.nutritionData })))}
 
@@ -573,52 +607,66 @@ For each food item:
 Example: If web data shows 60 kcal per 100ml but user wants 500ml, the result should be 300 kcal (60 × 5).
 
 If no web search data was found for any item, return zeros and explain the limitation.`
-        }
-      ],
-      temperature: 0,
-      max_tokens: 1500,
-    });
+          }
+        ],
+        temperature: 0,
+        max_tokens: 1500,
+      });
 
-    const result = response.choices[0].message.content;
-    if (!result) {
-      throw new Error('No response from OpenAI');
-    }
-
-    const cleanResult = result.replace(/```json\n?|```/g, '').trim();
-    const parsed = JSON.parse(cleanResult);
-
-    console.log(`🎯 FINAL CALCULATED RESULT:`, parsed);
-    console.log(`📈 Total Macros: ${parsed.calories} kcal, ${parsed.protein}g protein, ${parsed.carbs}g carbs, ${parsed.fat}g fat`);
-    console.log(`🧠 AI Reasoning:`, parsed.reasoning);
-
-    // Add debugging information to the response
-    const responseWithDebug = {
-      ...parsed,
-      debug: {
-        searchDebug: foodItems.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          searchPerformed: !!item.nutritionData,
-          searchResult: item.nutritionData ? {
-            source: item.nutritionData.source,
-            serving_info: item.nutritionData.serving_info,
-            values: {
-              protein: item.nutritionData.protein,
-              carbs: item.nutritionData.carbs,
-              fat: item.nutritionData.fat,
-              calories: item.nutritionData.calories
-            },
-            searchResultsPreview: item.nutritionData.searchResults.substring(0, 500)
-          } : null
-        })),
-        totalItemsFound: foodItems.length,
-        itemsWithData: foodItems.filter(item => item.nutritionData).length
+      const result = response.choices[0].message.content;
+      if (!result) {
+        throw new Error('No response from OpenAI');
       }
+
+      const cleanResult = result.replace(/```json\n?|```/g, '').trim();
+      const parsed = JSON.parse(cleanResult);
+
+      console.log(`🎯 Analysis complete for: "${mealDescription}"`);
+      console.log(`📈 Final totals: ${parsed.calories} kcal, ${parsed.protein}g protein, ${parsed.carbs}g carbs, ${parsed.fat}g fat`);
+
+      // Add debugging information to the response
+      const responseWithDebug = {
+        ...parsed,
+        debug: {
+          searchDebug: foodItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            searchPerformed: !!item.nutritionData,
+            searchResult: item.nutritionData ? {
+              source: item.nutritionData.source,
+              serving_info: item.nutritionData.serving_info,
+              values: {
+                protein: item.nutritionData.protein,
+                carbs: item.nutritionData.carbs,
+                fat: item.nutritionData.fat,
+                calories: item.nutritionData.calories
+              }
+            } : null
+          })),
+          totalItemsFound: foodItems.length,
+          itemsWithData: foodItems.filter(item => item.nutritionData).length
+        }
+      };
+
+      return NextResponse.json(responseWithDebug);
     };
 
-    return NextResponse.json(responseWithDebug);
+    // Race between analysis and timeout
+    const result = await Promise.race([analysisPromise(), timeoutPromise]);
+    return result;
   } catch (err) {
     console.error('API error:', err);
+    if (err instanceof Error && err.message.includes('timeout')) {
+      return NextResponse.json({ 
+        error: 'Analysis timeout - meal was too complex. Try entering fewer items at once.',
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        calories: 0,
+        breakdown: [],
+        reasoning: 'Request timed out due to complexity. Please try entering fewer food items at once.'
+      }, { status: 408 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
