@@ -3,28 +3,25 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['sharp']
   },
-  // Increase API timeout for nutrition analysis
-  api: {
-    responseLimit: false,
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-    // Increase timeout to 5 minutes for complex nutrition analysis
-    timeout: 300000,
-  },
-  // For App Router API routes
-  async headers() {
-    return [
-      {
-        source: '/api/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-store, must-revalidate',
-          },
-        ],
-      },
-    ];
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Exclude server-only modules from client bundle
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        undici: false,
+      };
+    }
+    
+    // Handle undici properly
+    config.externals = config.externals || [];
+    config.externals.push({
+      undici: 'undici'
+    });
+    
+    return config;
   },
 }
 
