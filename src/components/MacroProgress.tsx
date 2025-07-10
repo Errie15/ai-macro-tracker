@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MacroGoals, MacroNutrients } from '@/types';
-import { Activity, Target, Zap, Droplets } from 'lucide-react';
+import { Activity, Target, Zap, Droplets, Wine } from 'lucide-react';
 
 interface MacroProgressProps {
   totalMacros: MacroNutrients;
@@ -21,8 +21,9 @@ interface MacroBlockProps {
 
 function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: MacroBlockProps) {
   const [displayValue, setDisplayValue] = useState(0);
-  const percentage = Math.min((current / goal) * 100, 100);
-  const isOverGoal = current > goal;
+  const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  const isOverGoal = goal > 0 && current > goal;
+  const hasGoal = goal > 0;
   
   // Count-up animation
   useEffect(() => {
@@ -69,29 +70,35 @@ function MacroBlock({ label, current, goal, unit, color, icon, bgGradient }: Mac
               {Math.round(displayValue)}
             </span>
             <span className="text-tertiary text-sm font-medium">{unit}</span>
-            <span className="text-quaternary text-sm mx-1">/</span>
-            <span className="text-secondary text-sm font-medium">
-              {goal}{unit}
-            </span>
-            {/* Show over-goal indicator inline */}
-            {isOverGoal && (
-              <span className="text-xs text-warning-300 font-medium ml-1">
-                +{Math.round(current - goal)}{unit} over
-              </span>
+            {hasGoal && (
+              <>
+                <span className="text-quaternary text-sm mx-1">/</span>
+                <span className="text-secondary text-sm font-medium">
+                  {goal}{unit}
+                </span>
+                {/* Show over-goal indicator inline */}
+                {isOverGoal && (
+                  <span className="text-xs text-warning-300 font-medium ml-1">
+                    +{Math.round(current - goal)}{unit} over
+                  </span>
+                )}
+              </>
             )}
           </div>
           
-          {/* Progress bar only */}
-          <div className="progress-container h-1.5">
-            <div 
-              className={`progress-fill-glass ${
-                isOverGoal 
-                  ? 'bg-gradient-to-r from-warning-400 to-warning-500' 
-                  : `bg-gradient-to-r ${color.replace('text-', 'from-').replace('-400', '-400 to-').replace('text-', '').replace('-400', '-500')}`
-              }`}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
+          {/* Progress bar only when there's a goal */}
+          {hasGoal && (
+            <div className="progress-container h-1.5">
+              <div 
+                className={`progress-fill-glass ${
+                  isOverGoal 
+                    ? 'bg-gradient-to-r from-warning-400 to-warning-500' 
+                    : `bg-gradient-to-r ${color.replace('text-', 'from-').replace('-400', '-400 to-').replace('text-', '').replace('-400', '-500')}`
+                }`}
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -112,10 +119,27 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
     protein: totalMacros?.protein || 0,
     carbs: totalMacros?.carbs || 0,
     fat: totalMacros?.fat || 0,
-    calories: totalMacros?.calories || 0
+    calories: totalMacros?.calories || 0,
+    alcohol_info: totalMacros?.alcohol_info
   };
 
   console.log('📊 MacroProgress rendering with goals:', safeGoals, 'and totals:', safeTotalMacros);
+  console.log('🍺 Alcohol info in MacroProgress:', safeTotalMacros.alcohol_info);
+  console.log('🔍 Will show alcohol card?', !!safeTotalMacros.alcohol_info);
+
+  // Build alcohol block conditionally
+  const alcoholBlock = safeTotalMacros.alcohol_info ? [{
+    label: 'Alcohol',
+    current: safeTotalMacros.alcohol_info.total_alcohol_calories,
+    goal: 0, // No goal for alcohol
+    unit: ' kcal',
+    color: 'text-amber-400',
+    bgGradient: 'bg-gradient-to-br from-amber-500/20 to-yellow-500/20',
+    icon: <Wine className="w-full h-full" />
+  }] : [];
+
+  console.log('🍺 Building alcohol block:', safeTotalMacros.alcohol_info);
+  console.log('🍺 Alcohol block result:', alcoholBlock);
 
   const macroBlocks = [
     {
@@ -145,6 +169,8 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
       bgGradient: 'bg-gradient-to-br from-purple-500/20 to-pink-500/20',
       icon: <Droplets className="w-full h-full" />
     },
+    // Add alcohol block if alcohol_info is present
+    ...alcoholBlock,
     {
       label: 'Calories',
       current: safeTotalMacros.calories,
@@ -155,6 +181,9 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
       icon: <Target className="w-full h-full" />
     }
   ];
+
+  console.log('📊 Final macroBlocks array length:', macroBlocks.length);
+  console.log('📊 MacroBlocks labels:', macroBlocks.map(b => b.label));
 
   return (
     <div className="animate-slide-up">

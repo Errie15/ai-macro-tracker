@@ -44,6 +44,7 @@ export async function analyzeEnhancedMeal(mealDescription: string): Promise<AIRe
           reasoning: `Using previously saved analysis for similar vague description: "${previousMeal.originalText}"`,
           validation: 'Values from previous analysis of similar meal',
           confidence: 0.90,
+          ...(previousMeal.macros.alcohol_info && { alcohol_info: previousMeal.macros.alcohol_info }),
         };
       }
     } else {
@@ -55,12 +56,16 @@ export async function analyzeEnhancedMeal(mealDescription: string): Promise<AIRe
     console.log('🤖 Proceeding with AI analysis (respecting current input quantities)');
     const aiResult = await analyzeMeal(mealDescription);
     
+    console.log('🍺 AI result from analyzeMeal:', aiResult);
+    console.log('🍺 AI result alcohol_info:', aiResult.alcohol_info);
+    
     return {
       ...aiResult,
       confidence: quantityInfo.hasExplicitQuantities ? 0.85 : 0.70,
       breakdown: aiResult.breakdown,
       reasoning: aiResult.reasoning,
       validation: aiResult.validation,
+      ...(aiResult.alcohol_info && { alcohol_info: aiResult.alcohol_info }),
     };
 
   } catch (error) {

@@ -67,7 +67,11 @@ export async function analyzeMeal(mealDescription: string): Promise<AIResponse> 
       breakdown: macros.breakdown || [],
       reasoning: macros.reasoning || 'No reasoning provided',
       validation: macros.validation || 'No validation provided',
+      ...(macros.alcohol_info && { alcohol_info: macros.alcohol_info }),
     };
+
+    console.log('🍺 Alcohol info in API response:', macros.alcohol_info);
+    console.log('🍺 Including alcohol info in result:', result.alcohol_info);
 
     console.log('Returning processed result with full analysis:', result);
     return result;

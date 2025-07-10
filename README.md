@@ -37,10 +37,10 @@ Din personliga AI-assistent för hälsosam kost med modern glassmorphism-design 
    
    **Hämta API-nycklar:**
    
-   **Google Gemini API (för AI-analys):**
-   - Gå till [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Skapa eller logga in på ditt Google-konto
-   - Klicka på "Create API key"
+   **OpenAI API (för AI-analys med webbsökning):**
+   - Gå till [OpenAI API Platform](https://platform.openai.com/api-keys)
+   - Skapa eller logga in på ditt OpenAI-konto
+   - Klicka på "Create new secret key"
    - Kopiera nyckeln till din `.env.local` fil
    
    **USDA FoodData Central API (för matsökning):**
@@ -100,12 +100,22 @@ Makronutrienter visas i färgkodade glassmorphism-block:
 
 ## 🤖 AI-funktioner
 
-Se promt till AI api/analyze-meal/route.ts 
+**Förbättrad näringsanalys med webbsökning:**
 
-- Exakt näringsanalys baserat på svenska livsmedel
-- Intelligent portionsgissning
+- **Automatisk webbsökning**: AI:n söker på webben efter aktuella officiella näringsvärden för varje identifierat livsmedel
+- **Verifierbara resultat**: Resultaten matchar vad användare kan hitta genom att googla samma livsmedel
+- **Officiella källor**: Prioriterar märkesvarors officiella hemsidor och USDA-data
+- **Intelligent parsing**: Delar upp måltidsbeskrivningar i individuella livsmedel automatiskt
+- **Källangivelse**: Varje livsmedel visar exakt källa (t.ex. "McDonald's official website", "USDA FoodData Central")
+
+**Tekniska detaljer:**
+- Använder OpenAI GPT-4o mini:s inbyggda webbsökning
+- Parsing av måltidsbeskrivningar till individuella livsmedel
+- Intelligent portionsgissning baserat på beskrivning
+- Exakt näringsberäkning per portion
 - Felhantering med användarvänliga meddelanden
-- Fallback-värden om AI:n inte är tillgänglig
+
+Se detaljerad prompt i `api/analyze-meal/route.ts`
 
 ## 🔍 USDA Matsökning
 
@@ -137,8 +147,8 @@ window.testUSDA.getNutrition("apple", 150)      // Äpple 150g
 
 - **Framework**: Next.js 14 med App Router
 - **Styling**: Tailwind CSS med custom glassmorphism
-- **AI**: Google Gemini 1.5 Flash
-- **Näringsdata**: USDA FoodData Central API
+- **AI**: OpenAI GPT-4o mini med webbsökning
+- **Näringsdata**: USDA FoodData Central API + Webbsökning
 - **Icons**: Lucide React
 - **Language**: TypeScript
 - **Storage**: localStorage (offline-first)

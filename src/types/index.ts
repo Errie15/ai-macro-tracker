@@ -10,6 +10,11 @@ export interface MacroNutrients {
   carbs: number;
   fat: number;
   calories: number;
+  alcohol_info?: {
+    alcohol_calories: number;
+    carb_calories: number;
+    total_alcohol_calories: number;
+  };
 }
 
 export interface FoodBreakdown {
@@ -19,6 +24,8 @@ export interface FoodBreakdown {
   carbs: number;
   fat: number;
   calories: number;
+  source?: string;
+  serving_info?: string;
 }
 
 export interface AIResponse extends MacroNutrients {

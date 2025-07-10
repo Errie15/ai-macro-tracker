@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2, Clock, Utensils, ChevronDown, ChevronRight, Brain, Info, Edit3, Save, X, RefreshCw } from 'lucide-react';
+import { Trash2, Clock, Utensils, ChevronDown, ChevronRight, Brain, Info, Edit3, Save, X, RefreshCw, Wine } from 'lucide-react';
 import { MealEntry, MacroNutrients, FoodBreakdown } from '@/types';
 import { deleteMeal, updateMeal } from '@/lib/storage';
 
@@ -28,6 +28,36 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
   const [recalculatingMeals, setRecalculatingMeals] = useState<Set<string>>(new Set());
   const [showInstructions, setShowInstructions] = useState<Set<string>>(new Set());
   const [updatedMealTexts, setUpdatedMealTexts] = useState<{ [mealId: string]: string }>({});
+
+  // Function to render text with clickable links
+  const renderTextWithLinks = (text: string) => {
+    // Split text by common URL patterns and domain patterns
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        // Ensure the URL has a protocol
+        let url = part;
+        if (!url.startsWith('http')) {
+          url = `https://${url}`;
+        }
+        
+        return (
+          <a
+            key={index}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline transition-colors"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
 
   const toggleMealExpansion = (mealId: string) => {
     const newExpanded = new Set(expandedMeals);
@@ -353,6 +383,11 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
           const hasBreakdown = meal.breakdown && meal.breakdown.length > 0;
           const currentMacros = isEditing ? editValues[meal.id] : meal.macros;
           
+          // Debug logging for alcohol info in individual meals
+          if (meal.originalText.toLowerCase().includes('budvar') || meal.originalText.toLowerCase().includes('beer')) {
+            console.log(`🍺 Individual meal "${meal.originalText}" alcohol_info:`, currentMacros?.alcohol_info);
+          }
+          
           return (
           <div 
             key={meal.id}
@@ -423,7 +458,11 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
             </p>
             
               {/* Macro Grid - Editable when in edit mode */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-3">
+              <div className={`grid gap-1.5 mb-3 ${
+                currentMacros?.alcohol_info 
+                  ? 'grid-cols-2 sm:grid-cols-5' 
+                  : 'grid-cols-2 sm:grid-cols-4'
+              }`}>
                 {isEditing ? (
                   /* Edit mode - Input fields */
                   <>
@@ -458,9 +497,22 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                         min="0"
                       />
                       <div className="text-xs font-medium opacity-75">g fat</div>
-                </div>
+                    </div>
                     
-                                        <div className="macro-card macro-card-calories flex flex-col">
+                    {/* Alcohol card in edit mode - show if alcohol_info exists */}
+                    {currentMacros?.alcohol_info && (
+                      <div className="macro-card macro-card-alcohol flex flex-col bg-amber-500/10 border-amber-400/20 relative">
+                        <div className="absolute top-1 right-1 opacity-20">
+                          <Wine className="w-3 h-3 text-amber-400" />
+                        </div>
+                        <div className="text-base font-black text-amber-400">
+                          {Math.round(currentMacros.alcohol_info.total_alcohol_calories)}
+                        </div>
+                        <div className="text-xs font-medium opacity-75 text-amber-300">alcohol kcal</div>
+                      </div>
+                    )}
+                    
+                    <div className="macro-card macro-card-calories flex flex-col">
                       <input
                         type="number"
                         value={currentMacros?.calories || 0}
@@ -479,9 +531,9 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                     <div className="macro-card macro-card-protein">
                       <div className="text-base font-black">{currentMacros?.protein}</div>
                       <div className="text-xs font-medium opacity-75">g protein</div>
-              </div>
-              
-              <div className="macro-card macro-card-carbs">
+                    </div>
+                    
+                    <div className="macro-card macro-card-carbs">
                       <div className="text-base font-black">{currentMacros?.carbs}</div>
                       <div className="text-xs font-medium opacity-75">g carbs</div>
                     </div>
@@ -489,12 +541,25 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                     <div className="macro-card macro-card-fat">
                       <div className="text-base font-black">{currentMacros?.fat}</div>
                       <div className="text-xs font-medium opacity-75">g fat</div>
-                </div>
+                    </div>
+                    
+                    {/* Alcohol card in view mode - show if alcohol_info exists */}
+                    {currentMacros?.alcohol_info && (
+                      <div className="macro-card macro-card-alcohol bg-amber-500/10 border-amber-400/20 relative">
+                        <div className="absolute top-1 right-1 opacity-20">
+                          <Wine className="w-3 h-3 text-amber-400" />
+                        </div>
+                        <div className="text-base font-black text-amber-400">
+                          {Math.round(currentMacros.alcohol_info.total_alcohol_calories)}
+                        </div>
+                        <div className="text-xs font-medium opacity-75 text-amber-300">alcohol kcal</div>
+                      </div>
+                    )}
                     
                     <div className="macro-card macro-card-calories">
                       <div className="text-base font-black">{currentMacros?.calories}</div>
                       <div className="text-xs font-medium opacity-75">kcal</div>
-                </div>
+                    </div>
                   </>
                 )}
               </div>
@@ -609,9 +674,9 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                             <Info className="w-3 h-3 text-blue-400" />
                             <span className="text-xs font-medium text-blue-400">AI Analysis</span>
                           </div>
-                          <p className="text-xs text-secondary leading-relaxed">
-                            {meal.reasoning}
-                          </p>
+                          <div className="text-xs text-secondary leading-relaxed">
+                            {renderTextWithLinks(meal.reasoning)}
+                          </div>
                         </div>
                       )}
                       
@@ -684,7 +749,19 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
               </div>
               
                               {/* Individual food macros - Editable */}
-                              <div className="grid grid-cols-4 gap-1 mt-2">
+                              <div className={`grid gap-1 mt-2 ${
+                                // Check if this item is alcoholic by looking for alcohol-related keywords
+                                (item.food?.toLowerCase().includes('beer') || 
+                                 item.food?.toLowerCase().includes('öl') || 
+                                 item.food?.toLowerCase().includes('wine') || 
+                                 item.food?.toLowerCase().includes('budvar') ||
+                                 item.food?.toLowerCase().includes('carlsberg') ||
+                                 item.estimatedAmount?.toLowerCase().includes('%') ||
+                                 meal.macros?.alcohol_info) && 
+                                item.calories > 50 // Only show alcohol column for significant calorie alcoholic items
+                                  ? 'grid-cols-5' 
+                                  : 'grid-cols-4'
+                              }`}>
                                 {isEditingFood ? (
                                   /* Edit mode for food macros */
                                   <>
@@ -718,18 +795,36 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                                       />
                                       <div className="text-xs text-tertiary opacity-60">F</div>
                                     </div>
-                                                                         <div className="text-center">
-                                       <input
-                                         type="number"
-                                         value={currentFood?.calories || 0}
-                                         onChange={(e) => updateEditFoodValue(meal.id, itemIndex, 'calories', parseInt(e.target.value) || 0)}
-                                         className="text-xs font-bold text-orange-400 bg-transparent text-center w-full border border-orange-400/30 rounded px-1 opacity-60"
-                                         min="0"
-                                         disabled
-                                         title="Auto-calculated from macros (P×4 + C×4 + F×9)"
-                                       />
-                                       <div className="text-xs text-tertiary opacity-60">auto</div>
-                                     </div>
+                                    
+                                    {/* Alcohol column for alcoholic items in edit mode */}
+                                    {((item.food?.toLowerCase().includes('beer') || 
+                                       item.food?.toLowerCase().includes('öl') || 
+                                       item.food?.toLowerCase().includes('wine') || 
+                                       item.food?.toLowerCase().includes('budvar') ||
+                                       item.food?.toLowerCase().includes('carlsberg') ||
+                                       item.estimatedAmount?.toLowerCase().includes('%') ||
+                                       meal.macros?.alcohol_info) && 
+                                      item.calories > 50) && (
+                                      <div className="text-center">
+                                        <div className="text-xs font-bold text-amber-400 opacity-60">
+                                          {Math.round(meal.macros?.alcohol_info?.total_alcohol_calories || 0)}
+                                        </div>
+                                        <div className="text-xs text-tertiary opacity-60">alc</div>
+                                      </div>
+                                    )}
+                                    
+                                    <div className="text-center">
+                                      <input
+                                        type="number"
+                                        value={currentFood?.calories || 0}
+                                        onChange={(e) => updateEditFoodValue(meal.id, itemIndex, 'calories', parseInt(e.target.value) || 0)}
+                                        className="text-xs font-bold text-orange-400 bg-transparent text-center w-full border border-orange-400/30 rounded px-1 opacity-60"
+                                        min="0"
+                                        disabled
+                                        title="Auto-calculated from macros (P×4 + C×4 + F×9)"
+                                      />
+                                      <div className="text-xs text-tertiary opacity-60">auto</div>
+                                    </div>
                                   </>
                                 ) : (
                                   /* View mode for food macros */
@@ -746,6 +841,24 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                                       <div className="text-xs font-bold text-purple-400">{item.fat}g</div>
                                       <div className="text-xs text-tertiary opacity-60">F</div>
                                     </div>
+                                    
+                                    {/* Alcohol column for alcoholic items in view mode */}
+                                    {((item.food?.toLowerCase().includes('beer') || 
+                                       item.food?.toLowerCase().includes('öl') || 
+                                       item.food?.toLowerCase().includes('wine') || 
+                                       item.food?.toLowerCase().includes('budvar') ||
+                                       item.food?.toLowerCase().includes('carlsberg') ||
+                                       item.estimatedAmount?.toLowerCase().includes('%') ||
+                                       meal.macros?.alcohol_info) && 
+                                      item.calories > 50) && (
+                                      <div className="text-center">
+                                        <div className="text-xs font-bold text-amber-400">
+                                          {Math.round(meal.macros?.alcohol_info?.total_alcohol_calories || 0)}
+                                        </div>
+                                        <div className="text-xs text-tertiary opacity-60">alc</div>
+                                      </div>
+                                    )}
+                                    
                                     <div className="text-center">
                                       <div className="text-xs font-bold text-orange-400">{item.calories}</div>
                                       <div className="text-xs text-tertiary opacity-60">kcal</div>

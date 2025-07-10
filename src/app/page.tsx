@@ -179,16 +179,41 @@ export default function Home() {
 
   // Calculate total macros when meals change
   useEffect(() => {
+    console.log('🔄 Calculating total macros from meals:', todaysMeals.length);
+    
     const newTotalMacros = todaysMeals.reduce(
-      (total, meal) => ({
-        protein: total.protein + meal.macros.protein,
-        carbs: total.carbs + meal.macros.carbs,
-        fat: total.fat + meal.macros.fat,
-        calories: total.calories + meal.macros.calories,
-      }),
-      { protein: 0, carbs: 0, fat: 0, calories: 0 }
+      (total, meal) => {
+        console.log('📊 Processing meal:', meal.originalText, 'with macros:', meal.macros);
+        
+        // Calculate combined alcohol info if any meals have alcohol
+        let combinedAlcoholInfo = total.alcohol_info;
+        if (meal.macros.alcohol_info) {
+          console.log('🍺 Found alcohol info in meal:', meal.macros.alcohol_info);
+          if (!combinedAlcoholInfo) {
+            combinedAlcoholInfo = {
+              alcohol_calories: 0,
+              carb_calories: 0,
+              total_alcohol_calories: 0
+            };
+          }
+          combinedAlcoholInfo.alcohol_calories += meal.macros.alcohol_info.alcohol_calories;
+          combinedAlcoholInfo.carb_calories += meal.macros.alcohol_info.carb_calories;
+          combinedAlcoholInfo.total_alcohol_calories += meal.macros.alcohol_info.total_alcohol_calories;
+          console.log('🍺 Combined alcohol info now:', combinedAlcoholInfo);
+        }
+
+        return {
+          protein: total.protein + meal.macros.protein,
+          carbs: total.carbs + meal.macros.carbs,
+          fat: total.fat + meal.macros.fat,
+          calories: total.calories + meal.macros.calories,
+          alcohol_info: combinedAlcoholInfo
+        };
+      },
+      { protein: 0, carbs: 0, fat: 0, calories: 0, alcohol_info: undefined } as MacroNutrients
     );
     
+    console.log('📊 Final total macros calculated:', newTotalMacros);
     setTotalMacros(newTotalMacros);
   }, [todaysMeals]);
 

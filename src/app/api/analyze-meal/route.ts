@@ -5,41 +5,536 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-function generateSystemPrompt(mealDescription: string): string {
-  return `
-Given a list of food items and their quantities, estimate the total macronutrients: protein (g), carbohydrates (g), fat (g), and calories (kcal).
+interface FoodItem {
+  name: string;
+  quantity: string;
+  nutritionData?: {
+    protein: number;
+    carbs: number;
+    fat: number;
+    calories: number;
+    source: string;
+    serving_info: string;
+    searchResults: string;
+  };
+}
 
-CRITICAL: Use your most accurate knowledge of official nutritional data. For branded items, use the exact official nutritional information from the brand's website or USDA database.
+async function performRealWebSearch(query: string): Promise<string> {
+  try {
+    // Using Brave Search API for actual search results
+    const response = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`, {
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+        'X-Subscription-Token': process.env.BRAVE_SEARCH_API_KEY || ''
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Brave Search failed: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Extract web results from Brave Search API
+    const results = data.web?.results?.slice(0, 5)?.map((result: any) => ({
+      title: result.title,
+      url: result.url,
+      description: result.description
+    })) || [];
+    
+    return JSON.stringify(results);
+  } catch (error) {
+    console.error('Brave Search failed:', error);
+    return JSON.stringify([]);
+  }
+}
 
-Steps:
-1. Parse each food item and its quantity
-2. Normalize the food names to standard terms used in nutritional databases and for branded products
-3. For branded items, use official nutritional data (McDonald's, KFC, Subway, etc.)
-4. For generic items, use USDA or standard nutritional database values
-5. Retrieve or estimate average macronutrient values per 100g or standard portion
-6. Multiply the values by the specified quantity
-7. Calculate total calories using the standard formula:
-   - Protein: 4 kcal/g
-   - Carbohydrates: 4 kcal/g
-   - Fat: 9 kcal/g
-   - For alcoholic beverages:
-     * Step 1: Alcohol grams = volume_ml × ABV × 0.789
-     * Step 2: Alcohol calories = alcohol_grams × 7
-     * Step 3: Carb calories = carbs × 4
-     * Step 4: Total calories = alcohol_calories + carb_calories
-     * Beer: ~4-5g carbs per 100ml, Wine: ~2-4g carbs per 100ml
-     * In your reasoning, clearly show: "Alcohol calories: X kcal, Carb calories: Y kcal, Total calories = X + Y = Z kcal"
-     * DO NOT round, estimate, or reduce the total calories. The "calories" field MUST be exactly the sum from Step 4. If you calculate 183.5, use 184. If you calculate 223.5, use 224. Never use a lower or rounded-down value.
+async function searchFoodNutrition(foodQuery: string): Promise<{
+  protein: number;
+  carbs: number;
+  fat: number;
+  calories: number;
+  source: string;
+  serving_info: string;
+  searchResults: string;
+} | null> {
+  try {
+    // Use AI to generate optimized search queries
+    const searchQueries = await generateOptimizedSearchQueries(foodQuery);
 
-OFFICIAL NUTRITIONAL DATA - Use these exact values:
-- McDonald's Big Mac: 580 kcal, 25.9g protein, 44g carbs, 32.8g fat
-- McDonald's Quarter Pounder with Cheese: 520 kcal, 30g protein, 42g carbs, 26g fat
-- KFC Original Recipe Chicken Breast: 320 kcal, 29g protein, 8g carbs, 19g fat
-- Subway 6" Turkey Breast: 280 kcal, 18g protein, 46g carbs, 4g fat
-- Burger King Whopper: 657 kcal, 28g protein, 49g carbs, 40g fat
-- Domino's Medium Pepperoni Pizza (1 slice): 290 kcal, 12g protein, 30g carbs, 14g fat
-- Starbucks Grande Caffe Latte: 190 kcal, 12g protein, 18g carbs, 7g fat
-- Taco Bell Crunchy Taco: 170 kcal, 8g protein, 13g carbs, 10g fat
+    let officialSourceResult: any = null;
+    let fallbackResult: any = null;
+
+    for (let i = 0; i < searchQueries.length; i++) {
+      const searchQuery = searchQueries[i];
+      console.log(`🔍 SEARCH ATTEMPT ${i + 1}/${searchQueries.length}: "${searchQuery}"`);
+      
+      const realSearchResults = await performRealWebSearch(searchQuery);
+      
+      console.log(`📊 RAW BRAVE SEARCH RESULTS:`, realSearchResults);
+      
+      if (!realSearchResults || realSearchResults === '[]') {
+        console.log(`❌ No results for query ${i + 1}`);
+        continue;
+      }
+
+      // Parse and examine results
+      const results = JSON.parse(realSearchResults);
+      if (results.length === 0) {
+        console.log(`📭 Empty results array for query ${i + 1}`);
+        continue;
+      }
+
+      console.log(`✅ Found ${results.length} search results for query ${i + 1}`);
+      
+      // Log all search results for debugging
+      results.forEach((result: any, index: number) => {
+        console.log(`📋 RESULT ${index + 1}:`, {
+          title: result.title?.substring(0, 150),
+          url: result.url,
+          description: result.description?.substring(0, 300)
+        });
+      });
+
+      // Use AI to extract nutrition data from search results
+      console.log(`🤖 SENDING TO AI FOR EXTRACTION...`);
+    const nutritionResponse = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+            content: `You are a nutritional expert. Extract accurate nutritional information from the provided web search results. ONLY use the information found in these search results.
+
+TRUSTED SOURCE PRIORITY (in order):
+1. USDA FoodData Central (fdc.nal.usda.gov) - highest priority
+2. FatSecret (fatsecret.com) - very reliable
+3. Cronometer (cronometer.com) - professional nutrition tracking
+4. SELF NutritionData (nutritiondata.self.com) - science-based
+5. MyFitnessPal (myfitnesspal.com) - large user database
+6. Other reputable nutrition databases
+
+EXTRACTION RULES:
+- ALWAYS prioritize USDA and FatSecret if available
+- Look for nutritional values per 100g or per 100ml
+- Extract ONLY what you can clearly see in the search results
+- Convert units if needed (kJ to kcal: 1 kcal = 4.184 kJ)
+- Handle Swedish/English: "kalorier"=calories, "protein"=protein, "fett"=fat, "kolhydrater"=carbs
+
+Return JSON format with the exact values found:
+{
+  "protein": number,
+  "carbs": number, 
+  "fat": number,
+  "calories": number,
+  "source": "website name from search results",
+  "serving_info": "serving size from search results"
+}
+
+If the search results don't contain clear nutritional information from trusted sources, return null.`
+          },
+          {
+            role: 'user',
+            content: `Extract nutritional information for "${foodQuery}" from these web search results:
+
+${realSearchResults}
+
+PRIORITY: Look for USDA, FatSecret, Cronometer, or other trusted nutrition databases first. Only extract data if you can find clear nutritional values from these reliable sources.
+
+Examples of trusted data:
+- "61 calories in 100 ml" from FatSecret
+- "Per 100g: 257 calories, 1.1g protein" from USDA
+- Clear nutrition facts from established databases`
+          }
+      ],
+      temperature: 0,
+      max_tokens: 400,
+    });
+
+    const result = nutritionResponse.choices[0].message.content;
+      console.log(`🤖 AI EXTRACTION RESULT:`, result);
+      
+      if (result && result.toLowerCase() !== 'null') {
+        try {
+          const cleanResult = result.replace(/```json\n?|```/g, '').trim();
+          const parsed = JSON.parse(cleanResult);
+          
+          // Check if parsed is null or doesn't have required properties
+          if (!parsed || typeof parsed !== 'object') {
+            console.log(`❌ AI returned null or invalid object`);
+            continue;
+          }
+          
+          console.log(`✅ SUCCESSFULLY EXTRACTED NUTRITION DATA:`, parsed);
+          
+          // Check if we found trusted nutrition database source
+          const isTrustedSource = parsed.source && (
+            parsed.source.includes('fdc.nal.usda.gov') ||
+            parsed.source.includes('usda.gov') ||
+            parsed.source.includes('fatsecret.com') ||
+            parsed.source.includes('cronometer.com') ||
+            parsed.source.includes('nutritiondata.self.com') ||
+            parsed.source.includes('USDA') ||
+            parsed.source.includes('FatSecret') ||
+            parsed.source.includes('Cronometer')
+          );
+          
+          const isReliableSource = parsed.source && (
+            parsed.source.includes('myfitnesspal.com') ||
+            parsed.source.includes('MyFitnessPal') ||
+            parsed.source.includes('nutritionix.com') ||
+            parsed.source.includes('Nutritionix')
+          );
+          
+          console.log(`🏛️ Is trusted source (USDA/FatSecret)? ${isTrustedSource} (${parsed.source})`);
+          console.log(`📊 Is reliable source (MyFitnessPal)? ${isReliableSource} (${parsed.source})`);
+          
+          const nutritionData = {
+            protein: parsed.protein || 0,
+            carbs: parsed.carbs || 0,
+            fat: parsed.fat || 0,
+            calories: parsed.calories || 0,
+            source: parsed.source || 'web search',
+            serving_info: parsed.serving_info || 'per 100g',
+            searchResults: realSearchResults
+          };
+          
+          // Prioritize trusted sources first
+          if (isTrustedSource) {
+            console.log(`🏆 FOUND TRUSTED SOURCE - prioritizing this result`);
+            officialSourceResult = nutritionData;
+            // Don't break here, continue to see if we find more trusted sources
+          } else if (isReliableSource && !fallbackResult) {
+            // Store reliable sources as fallback
+            console.log(`📋 Found reliable source as fallback`);
+            fallbackResult = nutritionData;
+          } else if (!fallbackResult) {
+            // Store other sources as last resort fallback
+            console.log(`📋 Found other source as fallback`);
+            fallbackResult = nutritionData;
+          }
+        } catch (parseError) {
+          console.log(`❌ Failed to parse AI response:`, parseError);
+        }
+      } else {
+        console.log(`❌ AI could not extract nutrition data from these results`);
+      }
+      
+      // Add delay between searches to avoid rate limiting
+      if (i < searchQueries.length - 1) {
+        console.log(`⏱️ Waiting 1 second before next search...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    // Return official source if found, otherwise fallback
+    if (officialSourceResult) {
+      console.log(`🏆 USING TRUSTED SOURCE RESULT:`, officialSourceResult);
+      return officialSourceResult;
+    } else if (fallbackResult) {
+      console.log(`📋 USING FALLBACK RESULT:`, fallbackResult);
+      return fallbackResult;
+    }
+
+    // If no trusted sources found, use AI estimation as last resort
+    console.log(`🤖 No trusted sources found, attempting AI estimation...`);
+    try {
+      const aiEstimationResponse = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a nutritional expert. Since no trusted nutrition databases were found, provide a reasonable estimation for the nutritional content of the food item.
+
+ESTIMATION RULES:
+- Use your knowledge of similar foods and ingredients
+- Be conservative and realistic in estimates
+- Consider the food type, ingredients, and typical serving sizes
+- Provide per 100g or per 100ml values
+- Mark clearly that this is an AI estimation
+
+SPECIFIC FOOD KNOWLEDGE:
+- Oat milk (like Oatly): ~60-65 kcal, 1-1.5g protein, 7-8g carbs, 3-4g fat per 100ml
+- Regular milk (3%): ~60-65 kcal, 3-4g protein, 4-5g carbs, 3-4g fat per 100ml
+- Almond milk: ~15-20 kcal, 0.5-1g protein, 1-2g carbs, 1-2g fat per 100ml
+- Soy milk: ~40-50 kcal, 3-4g protein, 2-3g carbs, 2-3g fat per 100ml
+
+Return JSON format:
+{
+  "protein": number,
+  "carbs": number,
+  "fat": number,
+  "calories": number,
+  "source": "AI estimation",
+  "serving_info": "per 100g or per 100ml"
+}
+
+Only provide estimates for common foods. If you cannot make a reasonable estimate, return null.`
+          },
+          {
+            role: 'user',
+            content: `Provide nutritional estimation for: "${foodQuery}"
+
+Since no trusted nutrition databases were found, please estimate the nutritional content based on typical values for this type of food.`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 300,
+      });
+
+      const aiResult = aiEstimationResponse.choices[0].message.content;
+      console.log(`🤖 AI ESTIMATION RESULT:`, aiResult);
+      
+      if (aiResult && aiResult.toLowerCase() !== 'null') {
+        try {
+          const cleanResult = aiResult.replace(/```json\n?|```/g, '').trim();
+          const parsed = JSON.parse(cleanResult);
+          
+          if (parsed && typeof parsed === 'object' && parsed.calories) {
+            console.log(`🧠 USING AI ESTIMATION:`, parsed);
+            return {
+              protein: parsed.protein || 0,
+              carbs: parsed.carbs || 0,
+              fat: parsed.fat || 0,
+              calories: parsed.calories || 0,
+              source: 'AI estimation (no trusted sources found)',
+              serving_info: parsed.serving_info || 'per 100g',
+              searchResults: JSON.stringify([])
+            };
+          }
+        } catch (parseError) {
+          console.log(`❌ Failed to parse AI estimation:`, parseError);
+        }
+      }
+    } catch (error) {
+      console.error('❌ AI estimation failed:', error);
+    }
+
+    // If all search queries failed, return null (no fallback)
+    console.log(`❌ ALL SEARCH STRATEGIES AND AI ESTIMATION FAILED`);
+    return null;
+  } catch (error) {
+    console.error('❌ SEARCH FUNCTION ERROR:', error);
+    return null;
+  }
+}
+
+async function generateOptimizedSearchQueries(foodQuery: string): Promise<string[]> {
+  try {
+    console.log(`🔍 Analyzing food query for better search terms: "${foodQuery}"`);
+    
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a nutrition search expert. Analyze the food query and generate optimized search terms for finding nutritional information.
+
+ANALYSIS TASKS:
+1. Identify the food type and brand (if any)
+2. Add relevant synonyms and alternative names
+3. Include cooking methods if applicable
+4. Add nutritional database names that might have this food
+5. Include both Swedish and English terms if relevant
+6. Clarify vague terms (e.g., "chicken" → "chicken breast")
+
+SEARCH OPTIMIZATION RULES:
+- Add "nutrition facts", "calories", "protein", "carbs", "fat" keywords
+- Include "per 100g" or "per 100ml" for serving size
+- Mention trusted databases: FatSecret, USDA, MyFitnessPal
+- For brands, include both brand name and generic term
+- For foreign foods, include English translations
+- For vague terms, specify most common preparations
+
+EXAMPLES:
+Input: "Oatly Havredryck iKaffe" 
+Output: ["Oatly oat milk barista edition nutrition facts calories FatSecret", "Oatly havredryck ikaffe oat drink nutrition per 100ml", "oat milk barista coffee nutrition facts MyFitnessPal"]
+
+Input: "chicken"
+Output: ["chicken breast skinless nutrition facts calories per 100g USDA", "grilled chicken breast nutrition FatSecret", "chicken breast raw nutrition facts"]
+
+Input: "mjölk 3%"
+Output: ["milk 3% fat nutrition facts calories per 100ml", "whole milk 3% fat nutrition USDA FatSecret", "mjölk 3% fett nutrition facts Sweden"]
+
+Return JSON array of 5 optimized search queries:
+["search query 1", "search query 2", "search query 3", "search query 4", "search query 5"]`
+        },
+        {
+          role: 'user',
+          content: `Analyze this food query and generate 5 optimized search terms for finding nutritional information: "${foodQuery}"
+
+Consider:
+- What type of food is this?
+- Is it a brand name? If so, what's the generic term?
+- Are there common synonyms or alternative names?
+- What cooking method might be implied?
+- Which nutrition databases would likely have this food?
+
+Generate search queries that will find accurate nutritional data from trusted sources.`
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 800,
+    });
+
+    const result = response.choices[0].message.content;
+    console.log(`🧠 AI SEARCH OPTIMIZATION RESULT:`, result);
+    
+    if (result) {
+      try {
+        const cleanResult = result.replace(/```json\n?|```/g, '').trim();
+        const queries = JSON.parse(cleanResult);
+        if (Array.isArray(queries) && queries.length > 0) {
+          console.log(`✅ Generated ${queries.length} optimized search queries:`, queries);
+          return queries;
+        }
+      } catch (parseError) {
+        console.log(`❌ Failed to parse AI search optimization:`, parseError);
+      }
+    }
+    
+    // Fallback to basic queries if AI fails
+    return [
+      `"${foodQuery}" nutrition facts calories protein fat carbs per 100ml`,
+      `${foodQuery} nutritional information FatSecret MyFitnessPal`,
+      `${foodQuery} calories protein carbs fat USDA database`,
+      `"${foodQuery}" nutrition facts per 100g nutrition label`,
+      `${foodQuery} nutritional content macronutrients`
+    ];
+  } catch (error) {
+    console.error('❌ AI search optimization failed:', error);
+    
+    // Fallback to basic queries
+    return [
+      `"${foodQuery}" nutrition facts calories protein fat carbs per 100ml`,
+      `${foodQuery} nutritional information FatSecret MyFitnessPal`,
+      `${foodQuery} calories protein carbs fat USDA database`,
+      `"${foodQuery}" nutrition facts per 100g nutrition label`,
+      `${foodQuery} nutritional content macronutrients`
+    ];
+  }
+}
+
+async function parseMealIntoFoodItems(mealDescription: string): Promise<FoodItem[]> {
+  try {
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `Parse a meal description into individual food items with quantities. 
+
+CRITICAL: Extract the exact quantity (number + unit) that the user specified.
+
+Return JSON array with this exact format:
+[{"name": "food name without quantity", "quantity": "exact amount with unit (e.g., '500ml', '200g', '1 piece')"}]
+
+Examples:
+- "budvar 500 ml" → [{"name": "budvar", "quantity": "500ml"}]
+- "arla mjölk 3% fett 200 ml" → [{"name": "arla mjölk 3% fett", "quantity": "200ml"}]
+- "100g chicken breast" → [{"name": "chicken breast", "quantity": "100g"}]`
+        },
+        {
+          role: 'user',
+          content: `Parse this meal: "${mealDescription}"\n\nReturn JSON array with food name (without quantity) and exact quantity specified by user.`
+        }
+      ],
+      temperature: 0,
+      max_tokens: 500,
+    });
+
+    const result = response.choices[0].message.content;
+    if (result) {
+      const cleanResult = result.replace(/```json\n?|```/g, '').trim();
+      const parsed = JSON.parse(cleanResult);
+      console.log(`🍽️ PARSED FOOD ITEMS:`, parsed);
+      return parsed;
+    }
+    return [];
+  } catch (error) {
+    console.error('Failed to parse meal:', error);
+    return [];
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: 'OpenAI API key missing' }, { status: 500 });
+    }
+
+    if (!process.env.BRAVE_SEARCH_API_KEY) {
+      return NextResponse.json({ error: 'Brave Search API key missing - real web search not available' }, { status: 500 });
+    }
+
+    const { mealDescription } = await request.json();
+
+    if (!mealDescription || typeof mealDescription !== 'string') {
+      return NextResponse.json({ error: 'Meal description missing' }, { status: 400 });
+    }
+
+    // Parse meal into individual food items
+    const foodItems = await parseMealIntoFoodItems(mealDescription);
+    
+    // Perform REAL web searches for nutritional data for each food item
+    for (const foodItem of foodItems) {
+      try {
+        console.log(`Performing Brave Search for: ${foodItem.name}`);
+        const nutritionData = await searchFoodNutrition(foodItem.name);
+        if (nutritionData) {
+          foodItem.nutritionData = nutritionData;
+          console.log(`Found Brave Search data for ${foodItem.name}:`, nutritionData);
+        } else {
+          console.log(`❌ No nutrition data found for ${foodItem.name}`);
+        }
+      } catch (error) {
+        console.error(`Failed to perform Brave Search for ${foodItem.name}:`, error);
+      }
+    }
+
+    // Create data section from Brave Search results
+    const realWebSearchDataSection = foodItems
+    .filter(item => item.nutritionData)
+    .map(item => 
+        `- ${item.name} (${item.quantity}): ${item.nutritionData!.calories} kcal, ${item.nutritionData!.protein}g protein, ${item.nutritionData!.carbs}g carbs, ${item.nutritionData!.fat}g fat
+  Serving: ${item.nutritionData!.serving_info}
+  Web Source: ${item.nutritionData!.source}
+  Raw Search Results: ${item.nutritionData!.searchResults}`
+    )
+    .join('\n');
+
+    console.log(`🧮 CALCULATION INPUT DATA:`);
+    console.log(`📋 Food Items:`, foodItems.map(item => ({ 
+      name: item.name, 
+      userQuantity: item.quantity, 
+      foundData: item.nutritionData ? {
+        serving: item.nutritionData.serving_info,
+        calories: item.nutritionData.calories,
+        protein: item.nutritionData.protein,
+        carbs: item.nutritionData.carbs,
+        fat: item.nutritionData.fat,
+        source: item.nutritionData.source
+      } : null
+    })));
+    console.log(`📊 Web Search Data Section:`, realWebSearchDataSection);
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a nutritional expert. Use ONLY the web search nutritional data provided to analyze meals and calculate total macronutrients.
+
+${realWebSearchDataSection ? `WEB SEARCH NUTRITIONAL DATA:\n${realWebSearchDataSection}\n` : 'NO NUTRITIONAL DATA FOUND FROM WEB SEARCH'}
+
+CRITICAL CALCULATION RULES:
+1. Use ONLY the web search data provided above
+2. ALWAYS scale nutritional values based on the user's specified quantity vs the found serving size
+3. For example: If web data shows "per 100ml" but user wants "500ml", multiply ALL values by 5
+4. If web data shows "per 100g" but user wants "200g", multiply ALL values by 2
+5. Pay close attention to units (ml, g, pieces, etc.) and quantities
+
+If no data is available, return zeros and explain that web search failed.
 
 Respond in JSON format:
 {
@@ -54,45 +549,34 @@ Respond in JSON format:
       "protein": number,
       "carbs": number,
       "fat": number,
-      "calories": number
+      "calories": number,
+      "source": "exact web source or 'web search failed'",
+      "serving_info": "exact serving size or 'unknown'"
     }
   ],
-  "reasoning": "Explain how values were estimated",
-  "validation": "Show calculation of total calories from macros"
-}
-  `.trim();
-}
+  "reasoning": "Explain calculations using web search data, including how you scaled values from the found serving size to the user's specified quantity"
+}`
+        },
+        {
+          role: 'user',
+          content: `Analyze this meal: "${mealDescription}"
 
-export async function POST(request: NextRequest) {
-  try {
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: 'OpenAI API key missing' }, { status: 500 });
-    }
+Food items identified: ${JSON.stringify(foodItems.map(item => ({ name: item.name, quantity: item.quantity, hasWebSearchData: !!item.nutritionData })))}
 
-    const { mealDescription, isRecalculation, previousResult } = await request.json();
+IMPORTANT: Calculate the total macronutrients using ONLY the web search data provided above. 
 
-    if (!mealDescription || typeof mealDescription !== 'string') {
-      return NextResponse.json({ error: 'Meal description missing' }, { status: 400 });
-    }
+For each food item:
+1. Look at the web search data serving size (e.g., "per 100ml", "per 100g")
+2. Compare it to the user's specified quantity (e.g., "500ml", "200g")
+3. Scale the nutritional values accordingly (multiply by the ratio)
 
-    const systemPrompt = generateSystemPrompt(mealDescription);
+Example: If web data shows 60 kcal per 100ml but user wants 500ml, the result should be 300 kcal (60 × 5).
 
-    const userPrompt = `
-${isRecalculation ? `Recalculation request. Prior result: ${JSON.stringify(previousResult)}` : ''}
-
-Meal: "${mealDescription}"
-
-Analyze this meal and respond with valid JSON only.
-`;
-
-    const response = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+If no web search data was found for any item, return zeros and explain the limitation.`
+        }
       ],
       temperature: 0,
-      max_tokens: 2000,
+      max_tokens: 1500,
     });
 
     const result = response.choices[0].message.content;
@@ -101,104 +585,40 @@ Analyze this meal and respond with valid JSON only.
     }
 
     const cleanResult = result.replace(/```json\n?|```/g, '').trim();
-
     const parsed = JSON.parse(cleanResult);
 
-    // Force breakdown to match AI reasoning calculations and preserve exact decimal values
-    const correctedBreakdown = (parsed.breakdown || []).map((item: any) => {
-      const itemName = item.food?.toLowerCase() || '';
-      const isAlcoholic = itemName.includes('beer') || itemName.includes('öl') || itemName.includes('wine') || 
-                         itemName.includes('vin') || itemName.includes('vodka') || itemName.includes('whiskey') ||
-                         itemName.includes('rum') || itemName.includes('gin') || itemName.includes('tequila') ||
-                         itemName.includes('brandy') || itemName.includes('champagne') || itemName.includes('prosecco');
-      
-      if (isAlcoholic) {
-        const reasoning = parsed.reasoning || '';
-        
-        // Look for the final total calculation pattern: "= X kcal" or "Total calories = X + Y = Z kcal"
-        const totalCalcPatterns = [
-          // Match "80 + 149.1 = 229.1 kcal" format
-          /(\d+\.?\d*)\s*\+\s*(\d+\.?\d*)\s*=\s*(\d+\.?\d*)\s*kcal/i,
-          // Match "Total calories = 229.1 kcal" format
-          /total\s+calories?\s*=\s*(\d+\.?\d*)\s*kcal/i,
-          // Match final "= 229.1 kcal" format
-          /=\s*(\d+\.?\d*)\s*kcal(?!.*=)/i,
-          // Match "229.1 kcal" at end of calculation
-          /(\d+\.?\d*)\s*kcal\s*$/i
-        ];
-        
-        let correctCalories = item.calories;
-        
-        // Try to find the final calculation result
-        for (const pattern of totalCalcPatterns) {
-          const match = reasoning.match(pattern);
-          if (match) {
-            // For addition pattern, use the sum (third capture group)
-            const calValue = pattern.source.includes('\\+') ? match[3] : match[1];
-            correctCalories = Math.round(parseFloat(calValue));
-            break;
-          }
-        }
-        
-        // If we still have the wrong value, try to calculate it ourselves from the reasoning
-        if (correctCalories === item.calories && reasoning.includes('alcohol')) {
-          // Extract alcohol and carb calories from reasoning
-          const alcoholCalMatch = reasoning.match(/alcohol\s*calories?[:\s]*(\d+\.?\d*)/i);
-          const carbCalMatch = reasoning.match(/carb\s*calories?[:\s]*(\d+\.?\d*)/i);
-          
-          if (alcoholCalMatch && carbCalMatch) {
-            const alcoholCal = parseFloat(alcoholCalMatch[1]);
-            const carbCal = parseFloat(carbCalMatch[1]);
-            correctCalories = Math.round(alcoholCal + carbCal);
-          }
-        }
-        
-        return {
-          ...item,
-          calories: correctCalories
-        };
+    console.log(`🎯 FINAL CALCULATED RESULT:`, parsed);
+    console.log(`📈 Total Macros: ${parsed.calories} kcal, ${parsed.protein}g protein, ${parsed.carbs}g carbs, ${parsed.fat}g fat`);
+    console.log(`🧠 AI Reasoning:`, parsed.reasoning);
+
+    // Add debugging information to the response
+    const responseWithDebug = {
+      ...parsed,
+      debug: {
+        searchDebug: foodItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          searchPerformed: !!item.nutritionData,
+          searchResult: item.nutritionData ? {
+            source: item.nutritionData.source,
+            serving_info: item.nutritionData.serving_info,
+            values: {
+              protein: item.nutritionData.protein,
+              carbs: item.nutritionData.carbs,
+              fat: item.nutritionData.fat,
+              calories: item.nutritionData.calories
+            },
+            searchResultsPreview: item.nutritionData.searchResults.substring(0, 500)
+          } : null
+        })),
+        totalItemsFound: foodItems.length,
+        itemsWithData: foodItems.filter(item => item.nutritionData).length
       }
-      
-      return item;
-    });
-
-    // Calculate corrected totals from breakdown to ensure EXACT match - no rounding, preserve decimals
-    const correctedTotals = correctedBreakdown.reduce((totals: any, item: any) => ({
-      protein: totals.protein + (item.protein || 0),
-      carbs: totals.carbs + (item.carbs || 0),
-      fat: totals.fat + (item.fat || 0),
-      calories: totals.calories + (item.calories || 0)
-    }), { protein: 0, carbs: 0, fat: 0, calories: 0 });
-
-    // Ensure breakdown values are exactly what the AI calculated, no modifications
-    const finalBreakdown = correctedBreakdown.map((item: any) => ({
-      ...item,
-      protein: item.protein || 0,
-      carbs: item.carbs || 0,
-      fat: item.fat || 0,
-      calories: item.calories || 0
-    }));
-
-    // Recalculate totals from finalBreakdown to ensure perfect match
-    const finalTotals = finalBreakdown.reduce((totals: any, item: any) => ({
-      protein: totals.protein + item.protein,
-      carbs: totals.carbs + item.carbs,
-      fat: totals.fat + item.fat,
-      calories: totals.calories + item.calories
-    }), { protein: 0, carbs: 0, fat: 0, calories: 0 });
-
-    const macros = {
-      protein: finalTotals.protein,
-      carbs: finalTotals.carbs,
-      fat: finalTotals.fat,
-      calories: finalTotals.calories,
-      breakdown: finalBreakdown,
-      reasoning: parsed.reasoning || 'No reasoning provided',
-      validation: parsed.validation || 'No validation provided'
     };
 
-    return NextResponse.json(macros);
+    return NextResponse.json(responseWithDebug);
   } catch (err) {
+    console.error('API error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

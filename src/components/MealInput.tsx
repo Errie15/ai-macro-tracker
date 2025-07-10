@@ -245,6 +245,7 @@ export default function MealInput({ onMealAdded, onCancel }: MealInputProps) {
           carbs: analysisResult.carbs,
           fat: analysisResult.fat,
           calories: analysisResult.calories,
+          ...(analysisResult.alcohol_info && { alcohol_info: analysisResult.alcohol_info })
         },
         breakdown: analysisResult.breakdown,
         reasoning: analysisResult.reasoning,
