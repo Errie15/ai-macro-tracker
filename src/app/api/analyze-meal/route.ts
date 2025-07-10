@@ -459,14 +459,14 @@ Examples:
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // Set longer timeout for complex nutrition analysis
-    const timeoutPromise = new Promise((_, reject) => {
+    const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Request timeout - analysis taking too long')), 120000); // 2 minutes
     });
 
-    const analysisPromise = async () => {
+    const analysisPromise = async (): Promise<NextResponse> => {
       if (!process.env.OPENAI_API_KEY) {
         return NextResponse.json({ error: 'OpenAI API key missing' }, { status: 500 });
       }
