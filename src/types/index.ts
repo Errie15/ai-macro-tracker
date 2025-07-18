@@ -11,9 +11,8 @@ export interface MacroNutrients {
   fat: number;
   calories: number;
   alcohol_info?: {
-    alcohol_calories: number;
-    carb_calories: number;
-    total_alcohol_calories: number;
+    alcohol?: number; // grams of alcohol from individual meals
+    total_alcohol_calories: number; // calculated calories from alcohol
   };
 }
 
@@ -26,6 +25,7 @@ export interface FoodBreakdown {
   calories: number;
   source?: string;
   serving_info?: string;
+  alcohol?: number; // grams of alcohol for alcoholic items
 }
 
 export interface AIResponse extends MacroNutrients {

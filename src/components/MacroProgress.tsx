@@ -130,9 +130,9 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
   // Build alcohol block conditionally
   const alcoholBlock = safeTotalMacros.alcohol_info ? [{
     label: 'Alcohol',
-    current: safeTotalMacros.alcohol_info.total_alcohol_calories,
+    current: Math.round((safeTotalMacros.alcohol_info.total_alcohol_calories || 0) / 7), // Convert kcal back to grams (÷7)
     goal: 0, // No goal for alcohol
-    unit: ' kcal',
+    unit: 'g',
     color: 'text-amber-400',
     bgGradient: 'bg-gradient-to-br from-amber-500/20 to-yellow-500/20',
     icon: <Wine className="w-full h-full" />

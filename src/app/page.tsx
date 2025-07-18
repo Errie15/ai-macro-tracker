@@ -191,14 +191,15 @@ export default function Home() {
           console.log('🍺 Found alcohol info in meal:', meal.macros.alcohol_info);
           if (!combinedAlcoholInfo) {
             combinedAlcoholInfo = {
-              alcohol_calories: 0,
-              carb_calories: 0,
               total_alcohol_calories: 0
             };
           }
-          combinedAlcoholInfo.alcohol_calories += meal.macros.alcohol_info.alcohol_calories;
-          combinedAlcoholInfo.carb_calories += meal.macros.alcohol_info.carb_calories;
-          combinedAlcoholInfo.total_alcohol_calories += meal.macros.alcohol_info.total_alcohol_calories;
+          
+          // Calculate alcohol calories from grams: 7 kcal per gram of alcohol
+          if (meal.macros.alcohol_info.alcohol) {
+            const alcoholCalories = meal.macros.alcohol_info.alcohol * 7;
+            combinedAlcoholInfo.total_alcohol_calories += alcoholCalories;
+          }
           console.log('🍺 Combined alcohol info now:', combinedAlcoholInfo);
         }
 

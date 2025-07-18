@@ -506,7 +506,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                           <Wine className="w-3 h-3 text-amber-400" />
                         </div>
                         <div className="text-base font-black text-amber-400">
-                          {Math.round(currentMacros.alcohol_info.total_alcohol_calories)}
+                          {Math.round((currentMacros.alcohol_info.alcohol || 0) * 7)}
                         </div>
                         <div className="text-xs font-medium opacity-75 text-amber-300">alcohol kcal</div>
                       </div>
@@ -550,7 +550,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                           <Wine className="w-3 h-3 text-amber-400" />
                         </div>
                         <div className="text-base font-black text-amber-400">
-                          {Math.round(currentMacros.alcohol_info.total_alcohol_calories)}
+                          {Math.round((currentMacros.alcohol_info.alcohol || 0) * 7)}
                         </div>
                         <div className="text-xs font-medium opacity-75 text-amber-300">alcohol kcal</div>
                       </div>
@@ -807,7 +807,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                                       item.calories > 50) && (
                                       <div className="text-center">
                                         <div className="text-xs font-bold text-amber-400 opacity-60">
-                                          {Math.round(meal.macros?.alcohol_info?.total_alcohol_calories || 0)}
+                                          {Math.round((item as any).alcohol || 0)}g
                                         </div>
                                         <div className="text-xs text-tertiary opacity-60">alc</div>
                                       </div>
@@ -853,7 +853,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                                       item.calories > 50) && (
                                       <div className="text-center">
                                         <div className="text-xs font-bold text-amber-400">
-                                          {Math.round(meal.macros?.alcohol_info?.total_alcohol_calories || 0)}
+                                          {Math.round((item as any).alcohol || 0)}g
                                         </div>
                                         <div className="text-xs text-tertiary opacity-60">alc</div>
                                       </div>
