@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { getConversionsForPrompt } from '@/lib/volume-weight-conversions';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -53,16 +54,27 @@ You receive a meal description, and you should:
 
 1. Break down the meal into separate ingredients (e.g., "1 egg", "1 banana", "50g rye bread", "1 beer").
 
-2. For each ingredient, estimate ONLY:
+2. CRITICAL VOLUME-TO-WEIGHT CONVERSION RULE: 
+   - NEVER use generic conversions like "1 dl = 100g" or "1 cup = 100g"
+   - Each ingredient has a different density and must be converted individually
+   - You MUST use the EXACT conversions from this comprehensive reference table:
+   
+   ${getConversionsForPrompt()}
+   
+   This rule is MANDATORY. Any response using generic volume-to-weight conversions will be rejected.
+   If an ingredient is not in this table, use the closest similar ingredient or estimate conservatively.
+
+
+3. For each ingredient, estimate ONLY:
    - protein (g)
    - carbohydrates (g)
    - fat (g)
    - alcohol (g) - ONLY if the ingredient contains alcohol (beer, wine, spirits, etc.)
 
-3. Sum these to total values for the entire meal.
+4. Sum these to total values for the entire meal.
 
-4. Present the result in the following JSON format (NO calories field):
-5. Respond with ONLY valid JSON. No explanations.
+5. Present the result in the following JSON format (NO calories field):
+6. Respond with ONLY valid JSON. No explanations.
 
 {
   "ingredients": [
