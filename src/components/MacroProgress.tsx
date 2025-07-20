@@ -132,7 +132,7 @@ export default function MacroProgress({ totalMacros, goals }: MacroProgressProps
     label: 'Alcohol',
     current: Math.round((safeTotalMacros.alcohol_info.total_alcohol_calories || 0) / 7), // Convert kcal back to grams (÷7)
     goal: 0, // No goal for alcohol
-    unit: 'g',
+    unit: `g / ${Math.round(safeTotalMacros.alcohol_info.total_alcohol_calories || 0)}kcal`,
     color: 'text-amber-400',
     bgGradient: 'bg-gradient-to-br from-amber-500/20 to-yellow-500/20',
     icon: <Wine className="w-full h-full" />

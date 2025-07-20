@@ -506,9 +506,9 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                           <Wine className="w-3 h-3 text-amber-400" />
                         </div>
                         <div className="text-base font-black text-amber-400">
-                          {Math.round((currentMacros.alcohol_info.alcohol || 0) * 7)}
+                          {Math.round(currentMacros.alcohol_info.alcohol || 0)}
                         </div>
-                        <div className="text-xs font-medium opacity-75 text-amber-300">alcohol kcal</div>
+                        <div className="text-xs font-medium opacity-75 text-amber-300">g alcohol</div>
                       </div>
                     )}
                     
@@ -550,9 +550,9 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                           <Wine className="w-3 h-3 text-amber-400" />
                         </div>
                         <div className="text-base font-black text-amber-400">
-                          {Math.round((currentMacros.alcohol_info.alcohol || 0) * 7)}
+                          {Math.round(currentMacros.alcohol_info.alcohol || 0)}
                         </div>
-                        <div className="text-xs font-medium opacity-75 text-amber-300">alcohol kcal</div>
+                        <div className="text-xs font-medium opacity-75 text-amber-300">g alcohol</div>
                       </div>
                     )}
                     
@@ -750,15 +750,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
               
                               {/* Individual food macros - Editable */}
                               <div className={`grid gap-1 mt-2 ${
-                                // Check if this item is alcoholic by looking for alcohol-related keywords
-                                (item.food?.toLowerCase().includes('beer') || 
-                                 item.food?.toLowerCase().includes('öl') || 
-                                 item.food?.toLowerCase().includes('wine') || 
-                                 item.food?.toLowerCase().includes('budvar') ||
-                                 item.food?.toLowerCase().includes('carlsberg') ||
-                                 item.estimatedAmount?.toLowerCase().includes('%') ||
-                                 meal.macros?.alcohol_info) && 
-                                item.calories > 50 // Only show alcohol column for significant calorie alcoholic items
+                                meal.macros?.alcohol_info 
                                   ? 'grid-cols-5' 
                                   : 'grid-cols-4'
                               }`}>
@@ -797,14 +789,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                                     </div>
                                     
                                     {/* Alcohol column for alcoholic items in edit mode */}
-                                    {((item.food?.toLowerCase().includes('beer') || 
-                                       item.food?.toLowerCase().includes('öl') || 
-                                       item.food?.toLowerCase().includes('wine') || 
-                                       item.food?.toLowerCase().includes('budvar') ||
-                                       item.food?.toLowerCase().includes('carlsberg') ||
-                                       item.estimatedAmount?.toLowerCase().includes('%') ||
-                                       meal.macros?.alcohol_info) && 
-                                      item.calories > 50) && (
+                                    {meal.macros?.alcohol_info && (
                                       <div className="text-center">
                                         <div className="text-xs font-bold text-amber-400 opacity-60">
                                           {Math.round((item as any).alcohol || 0)}g
@@ -843,14 +828,7 @@ export default function MealList({ meals, onMealDeleted, onMealUpdated }: MealLi
                                     </div>
                                     
                                     {/* Alcohol column for alcoholic items in view mode */}
-                                    {((item.food?.toLowerCase().includes('beer') || 
-                                       item.food?.toLowerCase().includes('öl') || 
-                                       item.food?.toLowerCase().includes('wine') || 
-                                       item.food?.toLowerCase().includes('budvar') ||
-                                       item.food?.toLowerCase().includes('carlsberg') ||
-                                       item.estimatedAmount?.toLowerCase().includes('%') ||
-                                       meal.macros?.alcohol_info) && 
-                                      item.calories > 50) && (
+                                    {meal.macros?.alcohol_info && (
                                       <div className="text-center">
                                         <div className="text-xs font-bold text-amber-400">
                                           {Math.round((item as any).alcohol || 0)}g

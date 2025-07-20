@@ -43,7 +43,7 @@ export async function POST(request: Request): Promise<Response> {
     const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        {
+                {
           role: 'system',
           content: `You are a nutritional advisor who helps people estimate macronutrients in meals.
 
@@ -62,24 +62,24 @@ You receive a meal description, and you should:
 3. Sum these to total values for the entire meal.
 
 4. Present the result in the following JSON format (NO calories field):
+5. Respond with ONLY valid JSON. No explanations.
 
 {
   "ingredients": [
     {
       "name": "string",
-      "quantity": "string",
+      "quantity": "string", 
       "protein": number,
       "carbohydrates": number,
       "fat": number,
-      "alcohol": number (only include if > 0)
-    },
-    ...
+      "alcohol": number
+    }
   ],
   "total": {
     "protein": number,
     "carbohydrates": number,
     "fat": number,
-    "alcohol": number (only include if > 0)
+    "alcohol": number
   }
 }
 
@@ -90,8 +90,9 @@ Make realistic estimates based on standard nutritional databases. If the user do
           content: `Meal: "${mealDescription}"`
         }
       ],
-      temperature: 0.2,
-      max_tokens: 700,
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+      max_tokens: 400,
     });
 
     const result = response.choices[0].message.content;
