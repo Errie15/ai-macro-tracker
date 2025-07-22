@@ -60,7 +60,20 @@ export interface OnboardingState {
   completedSteps: string[];
 }
 
-export type OnboardingStep = 'username' | 'macros' | 'tutorial' | 'personal' | 'macros-suggested' | 'tour';
+export type OnboardingStep = 'consent' | 'username' | 'macros' | 'tutorial' | 'personal' | 'macros-suggested' | 'tour';
+
+// Consent and GDPR compliance types
+export interface ConsentData {
+  privacyPolicyAccepted: boolean;
+  termsOfServiceAccepted: boolean;
+  consentDate: string; // ISO string
+  consentVersion?: string; // Version of terms/privacy policy
+}
+
+export interface UserConsent {
+  hasConsented: boolean;
+  consentData?: ConsentData;
+}
 
 // Profile and user data types
 export interface UserProfile {

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, Check, Sparkles, User, Target, BookOpen, UserCheck, Brain } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Sparkles, User, Target, BookOpen, UserCheck, Brain, Shield } from 'lucide-react';
 import { OnboardingState, OnboardingStep } from '@/types';
+import OnboardingConsent from './OnboardingConsent';
 import OnboardingUsername from './OnboardingUsername';
 import OnboardingMacros from './OnboardingMacros';
 import OnboardingWalkthrough from './OnboardingWalkthrough';
@@ -13,6 +14,12 @@ interface OnboardingFlowProps {
 }
 
 const ONBOARDING_STEPS: { id: OnboardingStep; title: string; description: string; icon: any }[] = [
+  {
+    id: 'consent',
+    title: 'Privacy & Terms',
+    description: 'Review and accept our policies',
+    icon: Shield
+  },
   {
     id: 'username',
     title: 'Choose Username',
@@ -60,6 +67,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const currentStep = ONBOARDING_STEPS[currentStepIndex];
 
   const handleStepComplete = useCallback((stepId: OnboardingStep) => {
+    console.log('🎯 Step completed:', stepId);
     if (!completedSteps.includes(stepId)) {
       setCompletedSteps(prev => [...prev, stepId]);
     }
@@ -73,6 +81,23 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     //   handleStepComplete('tutorial');
     // }
   }, [currentStep.id, completedSteps, handleStepComplete]);
+
+  // Auto-advance from consent step when completed
+  useEffect(() => {
+    if (currentStep.id === 'consent' && completedSteps.includes('consent') && isStepComplete) {
+      console.log('🔄 Auto-advancing from consent step...');
+      setTimeout(() => {
+        if (currentStepIndex < ONBOARDING_STEPS.length - 1) {
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setCurrentStepIndex(prev => prev + 1);
+            setIsStepComplete(false);
+            setIsTransitioning(false);
+          }, 300);
+        }
+      }, 1000); // Give user time to see confirmation
+    }
+  }, [currentStep.id, completedSteps, isStepComplete, currentStepIndex]);
 
   const handleNext = async () => {
     setIsTransitioning(true);
@@ -142,6 +167,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const renderStepContent = () => {
     switch (currentStep.id) {
+      case 'consent':
+        return <OnboardingConsent onComplete={() => handleStepComplete('consent')} />;
       case 'username':
         return <OnboardingUsername onComplete={() => handleStepComplete('username')} />;
       case 'macros':
@@ -292,7 +319,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </div>
 
               {/* Navigation */}
-              {currentStep.id !== 'personal' && (
+              {currentStep.id !== 'personal' && currentStep.id !== 'consent' && (
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <button
                     onClick={handlePrevious}

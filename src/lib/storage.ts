@@ -1,4 +1,4 @@
-import { MacroGoals, MealEntry, DailyProgress, UserProfile, WeightEntry, OnboardingState } from '@/types';
+import { MacroGoals, MealEntry, DailyProgress, UserProfile, WeightEntry, OnboardingState, UserConsent, ConsentData } from '@/types';
 import { 
   ref, 
   get, 
@@ -19,6 +19,7 @@ const MEALS_KEY = 'macro-tracker-meals';
 const USER_PROFILE_KEY = 'macro-tracker-profile';
 const WEIGHT_ENTRIES_KEY = 'macro-tracker-weight';
 const ONBOARDING_KEY = 'macro-tracker-onboarding';
+const CONSENT_KEY = 'macro-tracker-consent';
 
 // Helper function to get current authenticated user
 async function getCurrentUser(): Promise<any> {
@@ -600,4 +601,60 @@ export async function setUserLanguage(language: string): Promise<void> {
     console.error('Error saving language preference to Realtime Database:', error);
     throw error;
   }
+}
+
+// Consent Functions
+export async function getUserConsent(): Promise<UserConsent> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    return { hasConsented: false };
+  }
+
+  try {
+    const consentRef = ref(db, `users/${user.uid}/consent`);
+    const snapshot = await get(consentRef);
+    
+    if (snapshot.exists()) {
+      const consentData = snapshot.val() as ConsentData;
+      return {
+        hasConsented: consentData.privacyPolicyAccepted && consentData.termsOfServiceAccepted,
+        consentData
+      };
+    } else {
+      return { hasConsented: false };
+    }
+  } catch (error) {
+    console.error('Error fetching user consent from Realtime Database:', error);
+    return { hasConsented: false };
+  }
+}
+
+export async function setUserConsent(privacyAccepted: boolean, termsAccepted: boolean, version?: string): Promise<void> {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    console.warn('Cannot save user consent: user not authenticated');
+    return;
+  }
+
+  const consentData: ConsentData = {
+    privacyPolicyAccepted: privacyAccepted,
+    termsOfServiceAccepted: termsAccepted,
+    consentDate: new Date().toISOString(),
+    consentVersion: version || '1.0'
+  };
+
+  try {
+    const consentRef = ref(db, `users/${user.uid}/consent`);
+    await set(consentRef, consentData);
+  } catch (error) {
+    console.error('Error saving user consent to Realtime Database:', error);
+    throw error;
+  }
+}
+
+export async function hasUserConsented(): Promise<boolean> {
+  const consent = await getUserConsent();
+  return consent.hasConsented;
 } 

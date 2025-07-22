@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, X, Target, Globe, Sun, Moon, User, LogOut, HelpCircle, Key } from 'lucide-react';
+import { Settings, X, Target, Globe, Sun, Moon, User, LogOut, HelpCircle, Key, Shield, FileText } from 'lucide-react';
 import { MacroGoals, UserProfile } from '@/types';
 import GoalsSettings from './GoalsSettings';
 import ProfileSettings from './ProfileSettings';
+import PrivacyPolicy from './PrivacyPolicy';
+import TermsOfService from './TermsOfService';
 // import OnboardingHelp from './OnboardingHelp';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile, getUserLanguage, setUserLanguage } from '@/lib/storage';
@@ -26,6 +28,8 @@ export default function SettingsMenu({
   const [showProfile, setShowProfile] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showTermsOfService, setShowTermsOfService] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({});
   const [language, setLanguage] = useState<string>('en-US');
   const { user, logout } = useAuth();
@@ -284,6 +288,30 @@ export default function SettingsMenu({
                   <span className="font-medium text-primary">Help & Tutorial</span>
                 </div>
                 <span className="text-sm text-secondary">Learn →</span>
+              </button>
+
+              {/* Privacy Policy Button */}
+              <button
+                onClick={() => setShowPrivacyPolicy(true)}
+                className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors tap-effect"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="w-5 h-5 text-secondary" />
+                  <span className="font-medium text-primary">Privacy Policy</span>
+                </div>
+                <span className="text-sm text-secondary">View →</span>
+              </button>
+
+              {/* Terms of Service Button */}
+              <button
+                onClick={() => setShowTermsOfService(true)}
+                className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors tap-effect"
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-secondary" />
+                  <span className="font-medium text-primary">Terms of Service</span>
+                </div>
+                <span className="text-sm text-secondary">View →</span>
               </button>
 
               {/* Logout Button */}
@@ -561,6 +589,22 @@ export default function SettingsMenu({
           </div>
           </div>
         </div>
+      )}
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyPolicy && (
+        <PrivacyPolicy 
+          onClose={() => setShowPrivacyPolicy(false)}
+          showAsModal={true}
+        />
+      )}
+
+      {/* Terms of Service Modal */}
+      {showTermsOfService && (
+        <TermsOfService
+          onClose={() => setShowTermsOfService(false)}
+          showAsModal={true}
+        />
       )}
     </>
   );
