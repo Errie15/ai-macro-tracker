@@ -50,14 +50,14 @@ export default function PrivacyPolicy({ onClose, showAsModal = false, className 
             <ul className="space-y-2 text-gray-700">
               <li>• We collect your email address to create and manage your account</li>
               <li>• We collect your meal descriptions, macro goals, and AI-generated nutrition data</li>
-              <li>• Your meal data is processed with OpenAI's language model to estimate nutrition content</li>
-              <li>• We don't sell your data or use it for advertising</li>
+              <li>• Your meal data is processed with OpenAI&apos;s language model to estimate nutrition content</li>
+              <li>• We don&apos;t sell your data or use it for advertising</li>
               <li>• Data may be processed outside the EU (USA via OpenAI) with appropriate GDPR protections</li>
               <li>• You can request data access, correction, deletion, or export at any time</li>
               <li>• You can withdraw consent by deleting your account or contacting us</li>
             </ul>
             <p className="text-sm text-gray-600 mt-3 italic">
-              Click "Read Full Policy" above for complete details.
+              Click &quot;Read Full Policy&quot; above for complete details.
             </p>
           </div>
         ) : (
@@ -105,7 +105,7 @@ export default function PrivacyPolicy({ onClose, showAsModal = false, className 
               <ul className="space-y-2 text-gray-700">
                 <li>• Your data is used only to provide you with app functionality</li>
                 <li>• Access to your data is restricted to authorized personnel and protected with encryption</li>
-                <li>• Meal descriptions you enter are analyzed with OpenAI's language model to estimate nutrition content</li>
+                <li>• Meal descriptions you enter are analyzed with OpenAI&apos;s language model to estimate nutrition content</li>
                 <li>• We do not sell your data and do not use it for advertising</li>
                 <li>• Data may be processed outside the EU (e.g., in the USA via OpenAI) and is protected through EU Commission Standard Contractual Clauses (SCC), which is an approved protection under GDPR Article 46.2(c)</li>
               </ul>

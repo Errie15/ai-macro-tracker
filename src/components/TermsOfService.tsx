@@ -51,13 +51,13 @@ export default function TermsOfService({ onClose, showAsModal = false, className
               <li>• You must be at least 18 years old to use MyMacros</li>
               <li>• The app is for personal, non-commercial use only</li>
               <li>• Nutritional information is not medical advice - consult professionals for medical needs</li>
-              <li>• You're responsible for using the app legally and respectfully</li>
+              <li>• You&apos;re responsible for using the app legally and respectfully</li>
               <li>• We can terminate accounts that violate these terms</li>
               <li>• These terms are governed by Swedish law</li>
               <li>• You have consumer rights that cannot be limited by these terms</li>
             </ul>
             <p className="text-sm text-gray-600 mt-3 italic">
-              Click "Read Full Terms" above for complete details.
+              Click &quot;Read Full Terms&quot; above for complete details.
             </p>
           </div>
         ) : (
@@ -72,7 +72,7 @@ export default function TermsOfService({ onClose, showAsModal = false, className
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">1. General</h3>
               <p className="text-gray-700">
-                These Terms of Service ("Terms") govern your use of the MyMacros mobile application ("App") provided by [Company name or data controller] ("we" or "us"). By creating an account or using the App, you agree to be bound by these Terms. Do not use the App if you do not accept the Terms.
+                These Terms of Service (&quot;Terms&quot;) govern your use of the MyMacros mobile application (&quot;App&quot;) provided by [Company name or data controller] (&quot;we&quot; or &quot;us&quot;). By creating an account or using the App, you agree to be bound by these Terms. Do not use the App if you do not accept the Terms.
               </p>
             </section>
 
@@ -93,7 +93,7 @@ export default function TermsOfService({ onClose, showAsModal = false, className
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">4. User Account</h3>
               <p className="text-gray-700">
-                To use the App's features, you need to create an account. You are responsible for ensuring the information you provide is accurate and for protecting your login credentials. You may not share your account with anyone else.
+                To use the App&apos;s features, you need to create an account. You are responsible for ensuring the information you provide is accurate and for protecting your login credentials. You may not share your account with anyone else.
               </p>
             </section>
 
