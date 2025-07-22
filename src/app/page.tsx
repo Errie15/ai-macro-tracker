@@ -12,6 +12,7 @@ import MealsPage from '@/components/MealsPage';
 import CalendarPage from '@/components/CalendarPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import InstallPrompt from '@/components/InstallPrompt';
+import AdBanner from '@/components/AdBanner';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
@@ -368,6 +369,15 @@ export default function Home() {
               <MacroProgress
                 totalMacros={totalMacros}
                 goals={goals}
+              />
+            </div>
+
+            {/* Strategic ad placement - non-intrusive banner */}
+            <div className="animate-slide-up">
+              <AdBanner 
+                adSlot="1234567890"
+                adFormat="auto"
+                className="mt-8 mb-4 rounded-2xl overflow-hidden opacity-70 hover:opacity-90 transition-opacity"
               />
             </div>
 

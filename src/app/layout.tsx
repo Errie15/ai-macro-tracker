@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
+import CookieConsent from '@/components/CookieConsent'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -46,6 +47,13 @@ export default function RootLayout({
         <meta name="theme-color" content="#22c55e" />
         <link rel="apple-touch-icon" href="/icon-emoji.svg" />
         <link rel="icon" href="/icon-emoji.svg" type="image/svg+xml" />
+        
+        {/* Google AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2464713169568824"
+          crossOrigin="anonymous"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -101,7 +109,8 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-        {children}
+          {children}
+          <CookieConsent />
         </AuthProvider>
       </body>
     </html>

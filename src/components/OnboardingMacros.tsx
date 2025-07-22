@@ -43,12 +43,12 @@ export default function OnboardingMacros({ onComplete, onNeedHelp, showHelpButto
   }, [onComplete]);
 
   const calculateAIMacros = (profile: UserProfile): MacroGoals => {
-    if (!profile.age || !profile.weight || !profile.height || !profile.gender || !profile.activityLevel) {
+    if (!profile.age || !profile.weight || !profile.height || !profile.gender || !profile.activityLevel || !profile.fitnessGoal) {
       // Fallback to default macros if profile is incomplete
       return { calories: 2000, protein: 150, carbs: 200, fat: 80 };
     }
 
-    // Basic BMR calculation using Mifflin-St Jeor Equation
+    // 1. BMR calculation using Mifflin-St Jeor Equation
     let bmr: number;
     if (profile.gender === 'male') {
       bmr = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age + 5;
@@ -56,28 +56,47 @@ export default function OnboardingMacros({ onComplete, onNeedHelp, showHelpButto
       bmr = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age - 161;
     }
 
-    // Activity multiplier
+    // 2. TDEE calculation with activity multipliers
     const activityMultipliers = {
-      sedentary: 1.2,
-      lightly_active: 1.375,
-      moderately_active: 1.55,
-      very_active: 1.725,
-      extremely_active: 1.9
+      sedentary: 1.2,           // Lite eller ingen träning
+      lightly_active: 1.375,    // Träning 1–3 gånger per vecka
+      moderately_active: 1.55,  // Träning 3–5 gånger per vecka
+      very_active: 1.725,       // Träning 6–7 gånger per vecka
+      extremely_active: 1.9     // 2 pass per dag eller mycket fysiskt arbete
     };
 
     const tdee = bmr * activityMultipliers[profile.activityLevel];
     
-    // Macro distribution based on common recommendations
-    const calories = Math.round(tdee);
-    const protein = Math.round(profile.weight * 2.2); // 2.2g per kg body weight
-    const fat = Math.round(calories * 0.25 / 9); // 25% of calories from fat
-    const carbs = Math.round((calories - (protein * 4) - (fat * 9)) / 4); // Remaining calories from carbs
+    // 3. Kalorimål baserat på mål
+    let calories: number;
+    switch (profile.fitnessGoal) {
+      case 'maintain':
+        calories = Math.round(tdee); // Behålla vikt: Kcal = TDEE
+        break;
+      case 'lose_fat':
+        calories = Math.round(tdee * 0.80); // Gå ner i vikt: Kcal = TDEE x 0.80
+        break;
+      case 'build_muscle':
+        calories = Math.round(tdee * 1.10); // Gå upp i vikt: Kcal = TDEE x 1.10
+        break;
+      default:
+        calories = Math.round(tdee);
+    }
+    
+    // 4. Makronutrientfördelning (gram) enligt exakta formler
+    const protein = Math.round(profile.weight * 2.2); // Protein i gram = vikt i kg x 2.2
+    const fat = Math.round(profile.weight * 0.9); // Fett i gram = vikt i kg x 0.9
+    
+    // Kolhydrater i kcal = Kalorimål – protein i kcal – fett i kcal
+    // Kolhydrater i gram = kolhydrat i kcal / 4
+    const carbsKcal = calories - (protein * 4) - (fat * 9);
+    const carbs = Math.round(Math.max(carbsKcal / 4, 0)); // Ensure no negative carbs
 
     return {
       calories,
       protein: Math.max(protein, 100), // Minimum 100g protein
-      carbs: Math.max(carbs, 100), // Minimum 100g carbs
-      fat: Math.max(fat, 50) // Minimum 50g fat
+      carbs: Math.max(carbs, 50), // Minimum 50g carbs
+      fat: Math.max(fat, 40) // Minimum 40g fat
     };
   };
 
@@ -95,7 +114,8 @@ export default function OnboardingMacros({ onComplete, onNeedHelp, showHelpButto
         profile.weight && 
         profile.height && 
         profile.gender && 
-        profile.activityLevel
+        profile.activityLevel &&
+        profile.fitnessGoal
       );
       
       if (!isProfileComplete) {
@@ -104,7 +124,8 @@ export default function OnboardingMacros({ onComplete, onNeedHelp, showHelpButto
           hasWeight: !!profile.weight,
           hasHeight: !!profile.height,
           hasGender: !!profile.gender,
-          hasActivityLevel: !!profile.activityLevel
+          hasActivityLevel: !!profile.activityLevel,
+          hasFitnessGoal: !!profile.fitnessGoal
         });
       }
       
